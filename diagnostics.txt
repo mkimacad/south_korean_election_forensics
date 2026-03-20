@@ -6,9 +6,9 @@
 
   ┌─ Matching Report ──────────────────────────
   │  Total election districts :  3,485
-  │  Matched (Pass 1 – exact) :  3,440
-  │  Matched (Pass 2 – alt sgg):     31
-  │  Matched (Pass 3 – fuzzy) :      2
+  │  Matched (Pass 1 – exact) :  3,466
+  │  Matched (Pass 2 – alt sgg):      7
+  │  Matched (Pass 3 – fuzzy) :      0
   │  Matched (Pass 4 – dong unique):    6
   │  Matched (Pass 5 – province+dong):   6
   │  Matched (Pass 6 – prov+sgg+dong):   0
@@ -16,12 +16,35 @@
   │  Unmatched                :      0  (0.0%)
   └────────────────────────────────────────────
 
+  [Non-Pass-1 matches — verify these are correct]
+  Pass     Area2 name                             Area3 name           SGG cands
+  -----------------------------------------------------------------------------------------------
+  pass2                                           대저동                  ['북', '강서']
+  pass2                                           대저동                  ['북', '강서']
+  pass2                                           가락동                  ['북', '강서']
+  pass2                                           녹산동                  ['북', '강서']
+  pass2                                           가덕도동                 ['북', '강서']
+  pass2                                           명지동                  ['북', '강서']
+  pass2                                           명지동                  ['북', '강서']
+  pass4                                           양림동                  ['동']
+  pass4                                           금호1가동                ['중']
+  pass4                                           금호2가동                ['중']
+  pass4                                           금호4가동                ['중']
+  pass4                                           옥수동                  ['중']
+  pass4                                           해룡면                  ['광양']
+  pass5                                           군내면                  ['파주']
+  pass5                                           방림동                  ['동']
+  pass5                                           방림동                  ['동']
+  pass5                                           사직동                  ['동']
+  pass5                                           백운동                  ['동']
+  pass5                                           백운동                  ['동']
+
 ==================================================
    PART 1: STANDARD FORENSICS (DIGITS & DISPERSION)
 ==================================================
 [*] 2BL Test -> Chi-Square: 9.77 | P-Value: 0.3695
 [*] Last Digit Uniformity -> Chi-Square: 5.99 | P-Value: 0.7411
-[*] Variance Test -> Avg StDev between neighbourhoods: 5.24%
+[*] Variance Test -> Avg StDev between neighbourhoods: 5.19%
 
 ==================================================
    PART 2: TESTING CONSPIRACY THEORIES
