@@ -53,8 +53,9 @@
 [*] 'Algorithmic Ratio' Theory -> R²: 0.9182
 
 [*] '63:36' Theory -> Macroscopic Aggregates:
-    - Gyeonggi: Dem 62.93% | Con 37.07%
-    - Incheon: Dem 63.61% | Con 36.39%
+    - Gyeonggi: Dem 63.27% | Con 36.73%
+    - Incheon: Dem 63.07% | Con 36.93%
+    - Seoul: Dem 63.51% | Con 36.49%
     - Microscopic Station Variance (StDev): 22.93%
 
 [*] 'Invalid Vote' Theory -> Correlation: 0.0495 (P-Val: 0.0035)
