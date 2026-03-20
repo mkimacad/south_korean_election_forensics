@@ -94,7 +94,7 @@ def setup_korean_font():
 # ==========================================
 # Set ELECTION_NUM to 21 or 22 to switch datasets.
 
-ELECTION_NUM = 21
+ELECTION_NUM = 22
 
 ELECTION_CONFIGS = {
     21: {
@@ -655,8 +655,19 @@ def run_forensics(df_dong_raw:  pd.DataFrame,
     print("═"*55)
 
     dm = merge_dong_with_census(df_dong_raw, df_census)
+    # Volume filter: enough votes in both early and same-day to be meaningful
     dm = dm[(dm['gwannaesa_total'] > MIN_VOTES) &
             (dm['same_day_total']  > MIN_VOTES)].copy()
+    # Candidate filter: drop dongs where the target party fielded no candidate.
+    # These produce gwannaesa_dem = same_day_dem = 0 – a mechanically zero gap
+    # that is uninformative and distorts the gap distribution.
+    no_cand = (dm['gwannaesa_dem'] == 0) & (dm['same_day_dem'] == 0)
+    if no_cand.sum() > 0:
+        affected = dm.loc[no_cand, '선거구명'].unique().tolist()
+        shown = ', '.join(affected[:5]) + ('...' if len(affected) > 5 else '')
+        print(f"  Dropping {no_cand.sum():,} no-candidate dongs "
+              f"({len(affected)} constituencies: {shown})")
+    dm = dm[~no_cand].copy()
 
     dm['early_pct']   = dm['gwannaesa_dem']  / dm['gwannaesa_total']
     dm['sameday_pct'] = dm['same_day_dem']   / dm['same_day_total']
@@ -666,7 +677,7 @@ def run_forensics(df_dong_raw:  pd.DataFrame,
                          (dm['gwannaesa_total'] + dm['same_day_total']))
     dm['turnout']     = dm['sum_vote_geo'] / dm['sum_people'].replace(0, np.nan)
 
-    print(f"\n  Rows after noise filter: {len(dm):,}")
+    print(f"\n  Rows after filters: {len(dm):,}")
 
     v2bl    = dm['gwannaesa_dem'].astype(int).astype(str)
     v2bl    = v2bl[v2bl.str.len() >= 2]
@@ -698,6 +709,12 @@ def run_forensics(df_dong_raw:  pd.DataFrame,
     cm = merge_const_with_census(df_const_raw, dm)
     cm = cm[(cm['sajeong_total']  > MIN_VOTES) &
             (cm['same_day_total'] > MIN_VOTES)].copy()
+    # Candidate filter: drop constituencies where the target party had no candidate.
+    no_cand_c = (cm['sajeong_dem'] == 0) & (cm['same_day_dem'] == 0)
+    if no_cand_c.sum() > 0:
+        shown = ', '.join(cm.loc[no_cand_c, '선거구명'].tolist()[:5])
+        print(f"  Dropping {no_cand_c.sum():,} no-candidate constituencies: {shown}")
+    cm = cm[~no_cand_c].copy()
 
     cm['early_pct']      = cm['sajeong_dem']     / cm['sajeong_total']
     cm['sameday_pct']    = cm['same_day_dem']    / cm['same_day_total']
