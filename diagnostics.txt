@@ -87,27 +87,29 @@
   │  Pass 7:      0
   │  Unmatched :      0  (0.0%)
   └────────────────────────────────────────────
+  Dropping 119 no-candidate dongs (9 constituencies: 경산시, 의성군청송군영덕군울진군, 달서구병, 동구군위군을, 서구...)
 
-  Rows after noise filter: 2,845
+  Rows after filters: 2,726
 [A1] 2BL (관내사전 dem)        χ²=  10.51  p=0.3110
 [A2] Last digit (관내사전 dem) χ²=  11.05  p=0.2723
-[A3] Cross-neighbourhood σ     5.58%
-[A4] Gap 관내사전−본투표        mean=+9.20%  σ=4.38%
-[A5] Algorithmic ratio         R²=0.9500
+[A3] Cross-neighbourhood σ     5.25%
+[A4] Gap 관내사전−본투표        mean=+9.60%  σ=4.02%
+[A5] Algorithmic ratio         R²=0.9464
 
 ═══════════════════════════════════════════════════════
   LEVEL B │ Constituency-level  (사전 전체 vs 본투표)
 ═══════════════════════════════════════════════════════
-  Constituency census merge: 254/254 matched.
+  Constituency census merge: 245/254 matched.
+  Dropping 9 no-candidate constituencies: 경산시, 의성군청송군영덕군울진군, 달서구병, 동구군위군을, 서구
 
-  Rows after noise filter: 254
+  Rows after noise filter: 245
 [B1] 2BL (사전 dem)            χ²=  11.64  p=0.2347
-[B2] Gap 사전−본투표            mean=+10.01%  σ=3.49%
-[B3] Algorithmic ratio         R²=0.9548
+[B2] Gap 사전−본투표            mean=+10.37%  σ=2.96%
+[B3] Algorithmic ratio         R²=0.9579
 [B4] Gap decomposition (vs 본투표):
-     관내사전  mean=+9.51%  σ=3.44%
-     관외사전  mean=+11.89%  σ=4.60%  (n=254)
-     gap shift from including 관외사전: mean=+0.50%  σ=0.68%
+     관내사전  mean=+9.86%  σ=2.97%
+     관외사전  mean=+12.33%  σ=4.07%  (n=245)
+     gap shift from including 관외사전: mean=+0.52%  σ=0.68%
 [B5] Metro aggregates (관내사전 stations):
      Gyeonggi    Dem 61.50% | Con 38.50%
      Incheon     Dem 59.02% | Con 40.98%
