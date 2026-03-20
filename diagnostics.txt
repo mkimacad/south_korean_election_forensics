@@ -1,24 +1,37 @@
+--- [1/3] Loading Demographic Census Data (data.csv) ---
+    Loaded 3,823 census rows.
+--- [2/3] Extracting Election Data from SQLite ---
+
+--- [3/3] Executing Comprehensive Forensics Suite ---
+
+  ┌─ Matching Report ──────────────────────────
+  │  Total election districts :  3,485
+  │  Matched (Pass 1 – exact) :  3,440
+  │  Matched (Pass 2 – alt sgg):     31
+  │  Matched (Pass 3 – fuzzy) :      2
+  │  Matched (Pass 4 – dong unique):    6
+  │  Matched (Pass 5 – province+dong):   6
+  │  Matched (Pass 6 – prov+sgg+dong):   0
+  │  Matched (Pass 7 – dot components):   0
+  │  Unmatched                :      0  (0.0%)
+  └────────────────────────────────────────────
+
 ==================================================
    PART 1: STANDARD FORENSICS (DIGITS & DISPERSION)
 ==================================================
-[*] 2BL Test -> Chi-Square: 10.28 | P-Value: 0.3282
-[*] Last Digit Uniformity -> Chi-Square: 9.73 | P-Value: 0.3728
-[*] Variance Test -> Avg StDev between neighborhoods: 5.21%
+[*] 2BL Test -> Chi-Square: 9.77 | P-Value: 0.3695
+[*] Last Digit Uniformity -> Chi-Square: 5.99 | P-Value: 0.7411
+[*] Variance Test -> Avg StDev between neighbourhoods: 5.24%
 
 ==================================================
    PART 2: TESTING CONSPIRACY THEORIES
 ==================================================
-[*] 'Constant Gap' Theory -> Mean Gap: +8.63% | StDev: 5.03%
-    (High StDev disproves algorithmic fixed padding)
-[*] 'Algorithmic Ratio' Theory -> R-Squared: 0.9193
-    (8.07% unexplained variance disproves a strict mathematical formula)
+[*] 'Constant Gap' Theory -> Mean Gap: +8.90% | StDev: 4.89%
+[*] 'Algorithmic Ratio' Theory -> R²: 0.9182
 
 [*] '63:36' Theory -> Macroscopic Aggregates:
-    - Gyeonggi: Dem 62.29% | Con 37.71%
+    - Gyeonggi: Dem 62.93% | Con 37.07%
     - Incheon: Dem 63.61% | Con 36.39%
-    - Seoul: Dem 60.31% | Con 39.69%
     - Microscopic Station Variance (StDev): 22.93%
-    (High microscopic variance proves the 63:36 aggregate is just the Law of Large Numbers)
 
 [*] 'Invalid Vote' Theory -> Correlation: 0.0495 (P-Val: 0.0035)
-    (Correlation near zero proves invalid votes were not weaponized)
