@@ -30,42 +30,82 @@ def normalize_dong_name(name: str) -> str:
     name = re.sub(r'\(.*?\)', '', name)              # step 1: drop code suffix
     name = name.strip()                               # step 2
     name = name.replace('.', '·')                     # step 3: census uses '.' election uses '·'
-    name = re.sub(r'·\d+', '', name)                 # step 4: "상계3·4동"->"상계3동", "종로1·2·3·4가동"->"종로1가동"
-    name = re.sub(r'제?(\d+)(동|읍|면)$', r'\2', name) # step 5: "창제1동"->"창동", "역삼1동"->"역삼동"
+    name = re.sub(r'제(\d)', r'\1', name)              # step 4: strip ordinal 제 before digit anywhere: "봉명제2·송정동"->"봉명2·송정동"
+    name = re.sub(r'·\d+', '', name)                 # step 5: "상계3·4동"->"상계3동", "종로1·2·3·4가동"->"종로1가동"
+    name = re.sub(r'(\d+)(동|읍|면)$', r'\2', name)    # step 6: "역삼1동"->"역삼동", "창1동"->"창동"
     name = re.sub(r'\s+', ' ', name)                 # step 6
     return name
 
 
-def normalize_sigungu(name: str) -> str:
+def split_admin_tokens(name: str) -> list:
     """
-    Strip trailing 시/군/구 AND common province prefixes so that
-    '종로구' and '종로' both map to '종로',
-    and compound names like '수원시장안구' are split intelligently.
+    Split a Korean administrative name on 시/군/구 boundaries,
+    requiring each token to be at least 2 characters long.
 
-    Returns a *list* of candidate keys (most specific first) so the
-    caller can try each one.
+    '수원시장안구' → ['수원시', '장안구']
+    '춘천시철원군화천군양구군' → ['춘천시', '철원군', '화천군', '양구군']
+    '군포시' → ['군포시']          (NOT ['군', '포시'])
+    '북구강서구' → ['북구', '강서구']
+    """
+    tokens, buf = [], []
+    for ch in name:
+        buf.append(ch)
+        if ch in '시군구' and len(buf) >= 2:
+            tokens.append(''.join(buf))
+            buf = []
+    if buf:
+        tokens.append(''.join(buf))
+    return [t for t in tokens if t]
+
+
+def normalize_sigungu(name: str) -> list:
+    """
+    Parse a Korean si/gun/gu name into a list of match-key candidates,
+    most-useful first.
+
+    Ordering strategy
+    -----------------
+    * City + sub-district  e.g. '수원시장안구':
+      Reversed (most specific first): ['장안', '수원']
+      The gu name is the direct census key; the si is a fallback.
+
+    * Multi-city constituency  e.g. '춘천시철원군화천군양구군':
+      Forward (left = primary city whose dongs we are matching): ['춘천', '철원', '화천', '양']
+
+    * Multi-gu constituency  e.g. '북구강서구':
+      Forward (first-listed gu is where the dongs physically sit): ['북', '강서']
+
+    * Single token  e.g. '군포시', '종로구':
+      Just the stripped name: ['군포'], ['종로']
     """
     if not isinstance(name, str):
         return []
-    name = name.strip()
-    # Remove parentheticals
     name = re.sub(r'\(.*?\)', '', name).strip()
+    if not name:
+        return []
+
+    tokens = split_admin_tokens(name)
+    if not tokens:
+        # Fallback for names that don't end in 시/군/구
+        stripped = re.sub(r'[시군구갑을병정무]$', '', name).strip()
+        return [stripped] if stripped else []
+
+    si_gun_count = sum(1 for t in tokens if t[-1] in '시군' and len(t) >= 2)
+    gu_count     = sum(1 for t in tokens if t[-1] == '구' and len(t) >= 2)
+
+    # Decide iteration order
+    if si_gun_count >= 2 or (si_gun_count == 0 and gu_count >= 2):
+        # Multi-city or multi-gu: forward order (first token = primary)
+        ordered = tokens
+    else:
+        # Single city [+ sub-district]: reverse (most specific first)
+        ordered = list(reversed(tokens))
+
     candidates = []
-
-    # If the string contains multiple 시/군/구 segments (e.g. "수원시장안구"),
-    # split them out so we can try both "장안구"→"장안" and "수원시"→"수원".
-    parts = re.split(r'(?<=[시군구])', name)
-    parts = [p.strip() for p in parts if p.strip()]
-
-    for part in reversed(parts):           # most-specific (smallest) unit first
-        stripped = re.sub(r'[시군구]$', '', part).strip()
-        if stripped:
-            candidates.append(stripped)
-
-    # Also keep the raw last-word fallback
-    raw_last = re.sub(r'[시군구갑을병정무]$', '', name.split()[-1]).strip()
-    if raw_last and raw_last not in candidates:
-        candidates.append(raw_last)
+    for t in ordered:
+        key = re.sub(r'[시군구]$', '', t).strip()
+        if key and key not in candidates:
+            candidates.append(key)
 
     return candidates
 
@@ -372,7 +412,9 @@ def merge_election_with_census(df_election: pd.DataFrame,
                           if dong_frequency[d] == 1}
 
     results = []
-    stats   = {'pass1': 0, 'pass2': 0, 'pass3': 0, 'pass4': 0, 'pass5': 0, 'pass6': 0, 'pass7': 0, 'unmatched': 0}
+    stats        = {'pass1': 0, 'pass2': 0, 'pass3': 0, 'pass4': 0,
+                     'pass5': 0, 'pass6': 0, 'pass7': 0, 'unmatched': 0}
+    fallback_log = []  # records every non-Pass-1 match for inspection
 
     for _, row in df_election.iterrows():
         propensity  = None
@@ -385,6 +427,16 @@ def merge_election_with_census(df_election: pd.DataFrame,
         if key1 in census_lookup:
             propensity = census_lookup[key1]
             match_pass = 'pass1'
+
+        # Pass 1b – primary sgg, dong with all · stripped
+        # Handles cases where census omits the middle-dot separator that
+        # the election DB uses, e.g. '탑·대성동' (election) vs '탑대성동' (census)
+        if propensity is None and '·' in dong_key:
+            dong_nodot = dong_key.replace('·', '')
+            key1b = (row['primary_sgg'], dong_nodot)
+            if key1b in census_lookup:
+                propensity = census_lookup[key1b]
+                match_pass = 'pass1'
 
         # Pass 2 – try alternate sgg keys, exact dong
         if propensity is None:
@@ -467,6 +519,15 @@ def merge_election_with_census(df_election: pd.DataFrame,
             stats['unmatched'] += 1
         else:
             stats[match_pass] += 1
+            if match_pass != 'pass1':
+                fallback_log.append({
+                    'pass':       match_pass,
+                    'area2_name': row.get('area2_name', ''),
+                    'area3_name': row.get('name', dong_key),
+                    'dong_norm':  dong_key,
+                    'sgg_cands':  sgg_cands,
+                    'province':   row.get('province_tag', ''),
+                })
 
         row_dict = row.to_dict()
         row_dict['demographic_propensity'] = propensity
@@ -489,19 +550,25 @@ def merge_election_with_census(df_election: pd.DataFrame,
     print(f"  │  Matched (Pass 7 – dot components): {stats['pass7']:>3,}")
     print(f"  │  Unmatched                : {stats['unmatched']:>6,}  ({stats['unmatched']/total*100:.1f}%)")
 
-    # ── Diagnostic: for still-unmatched rows, show whether dong_key exists
-    # anywhere in census (sgg mismatch) or is absent entirely (census gap)
+    # ── Diagnostic: unmatched rows ─────────────────────────────────────────
     if stats['unmatched'] > 0:
         census_dongs_any_sgg = {k[1] for k in census_lookup}
         unmatched_rows = [r for r in results if r['match_pass'] is None]
-        print(f"\n  [Unmatched districts (first 20)]")
+        print(f"\n  [Unmatched districts]")
         for r in unmatched_rows[:20]:
             in_census = r['dong_norm'] in census_dongs_any_sgg
             flag = "sgg-mismatch" if in_census else "NOT-IN-CENSUS"
             print(f"    [{flag}]  sgg_cands={r['sgg_candidates']}  dong='{r['dong_norm']}'")
     print(f"  └────────────────────────────────────────────")
 
-
+    # ── Diagnostic: fallback-pass matches (Pass 2+) ───────────────────────
+    if fallback_log:
+        print(f"\n  [Non-Pass-1 matches — verify these are correct]")
+        print(f"  {'Pass':<8} {'Area2 name':<38} {'Area3 name':<20} {'SGG cands'}")
+        print(f"  {'-'*95}")
+        for r in sorted(fallback_log, key=lambda x: x['pass']):
+            print(f"  {r['pass']:<8} {str(r['area2_name']):<38} "
+                  f"{str(r['area3_name']):<20} {r['sgg_cands']}")
 
     return df_out
 
