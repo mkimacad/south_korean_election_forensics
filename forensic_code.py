@@ -734,24 +734,11 @@ def run_forensics(df_dong_raw: pd.DataFrame, df_const_raw: pd.DataFrame, df_stat
             + " Benford's natural distribution.")
 
         # ------------------------------------------------------------------
-        # Shikano & Mack (2011) Homogeneity Diagnostic
+        # Scale-Range Comparison (Fewster 2009 / Hill 1995)
         #
-        # Shikano & Mack show that the naive χ²-based 2BL test produces
-        # inflated statistics — even without fraud — when BOTH of the
-        # following conditions hold simultaneously:
-        #   (1) The mode of the vote-count distribution is between ~80–190
-        #   (2) The distribution is homogeneous (KDE maximum density > ~0.01)
-        #
-        # Metropolitan precincts (dense, similarly-sized urban dongs) are
-        # structurally more homogeneous than the nationwide distribution and
-        # are expected to have vote-count modes in the critical range.
-        # If both conditions are met, the naive χ²(9) critical value of 16.9
-        # is inappropriate and a simulation-based critical value is required.
-        #
-        # Scale-range comparison (Fewster 2009 / Hill 1995):
-        # Also reported for reference — 2BL is most reliable when data span
-        # several orders of magnitude.  The metro subset removes very small
-        # rural precincts, slightly compressing the lower tail.
+        # 2BL is most reliable when data span several orders of magnitude
+        # on the original scale.  The metro subset removes very small rural
+        # precincts, slightly compressing the lower tail of the distribution.
         # ------------------------------------------------------------------
         votes_metro_sm = dm_metro['gwannaesa_dem'][
             dm_metro['gwannaesa_dem'] >= 10
@@ -761,9 +748,8 @@ def run_forensics(df_dong_raw: pd.DataFrame, df_const_raw: pd.DataFrame, df_stat
             dm['gwannaesa_dem'] >= 10
         ].values.astype(float)
 
-        # --- Scale-range comparison (Fewster / Hill) ---
-        metro_min_sr = int(votes_metro_sm.min())
-        metro_max_sr = int(votes_metro_sm.max())
+        metro_min_sr  = int(votes_metro_sm.min())
+        metro_max_sr  = int(votes_metro_sm.max())
         nation_min_sr = int(votes_nation_sm.min())
         nation_max_sr = int(votes_nation_sm.max())
         metro_orders  = np.log10(metro_max_sr  / metro_min_sr)  if metro_min_sr  > 0 else 0.0
@@ -774,9 +760,27 @@ def run_forensics(df_dong_raw: pd.DataFrame, df_const_raw: pd.DataFrame, df_stat
         log(f"    Metro [F7a] range     : {metro_min_sr:,} – {metro_max_sr:,} "
             f"({metro_orders:.2f} orders of magnitude)")
 
-        # --- Shikano-Mack homogeneity diagnostic ---
+        # ------------------------------------------------------------------
+        # Shikano & Mack (2011) Homogeneity Diagnostic
+        #
+        # S&M identify two conditions that inflate the naive χ²(9) 2BL
+        # statistic even without fraud:
+        #   (1) Mode of the vote-count distribution ∈ [80, 190]
+        #   (2) Distribution is homogeneous (KDE max density > 0.01)
+        #
+        # IMPORTANT — unit of analysis:
+        # S&M calibrated these thresholds on individual polling-station
+        # (Wahlbezirk) vote counts, which typically range from ~50 to ~500
+        # votes.  The present [F7a] analysis operates on Dong-level
+        # aggregates: each Dong combines multiple polling stations, producing
+        # vote totals in the thousands.  The S&M mode range of 80–190 and
+        # KDE density threshold of 0.01 therefore cannot be expected to apply
+        # at Dong-level aggregation.  The diagnostic is reported for
+        # completeness; the result (conditions NOT met) simply confirms that
+        # the aggregation level differs from S&M's calibration, not that the
+        # test is necessarily reliable.
+        # ------------------------------------------------------------------
         try:
-            # Mode: midpoint of the most-populated histogram bin
             hist_counts_sm, hist_edges_sm = np.histogram(
                 votes_metro_sm, bins=min(50, max(10, len(votes_metro_sm) // 10))
             )
@@ -784,10 +788,6 @@ def run_forensics(df_dong_raw: pd.DataFrame, df_const_raw: pd.DataFrame, df_stat
             mode_approx  = float(
                 hist_edges_sm[np.argmax(hist_counts_sm)] + bin_width_sm / 2.0
             )
-
-            # KDE maximum: proxy for distributional homogeneity.
-            # Evaluate over the main body of the distribution (up to 2,000 votes)
-            # to avoid the KDE being diluted by the long upper tail.
             kde_x_max = min(float(votes_metro_sm.max()), 2000.0)
             kde_obj   = gaussian_kde(votes_metro_sm)
             kde_x     = np.linspace(votes_metro_sm.min(), kde_x_max, 1000)
@@ -798,26 +798,27 @@ def run_forensics(df_dong_raw: pd.DataFrame, df_const_raw: pd.DataFrame, df_stat
             log(f"  [!] Homogeneity diagnostic error: {e}")
 
         log(f"\n  Shikano & Mack (2011) Homogeneity Diagnostic:")
+        log(f"  NOTE: S&M thresholds calibrated for station-level counts (~50–500 votes).")
+        log(f"  This analysis uses Dong-level aggregates (mode ~{mode_approx:.0f} votes).")
+        log(f"  S&M conditions are not applicable at this aggregation level.")
         log(f"    Approx. mode of metro vote-count distribution: {mode_approx:.0f} votes")
         log(f"    KDE max density (homogeneity proxy)          : {kde_max:.5f}")
-        log(f"    S&M inflated-χ² conditions:")
+        log(f"    S&M station-level conditions (for reference):")
         log(f"      (1) mode ∈ [80, 190]  → {'YES' if 80 <= mode_approx <= 190 else 'NO'}")
         log(f"      (2) KDE max > 0.01    → {'YES' if kde_max > 0.01 else 'NO'}")
 
-        mode_in_range    = not np.isnan(mode_approx) and (80 <= mode_approx <= 190)
-        kde_homogeneous  = not np.isnan(kde_max)     and (kde_max > 0.01)
+        mode_in_range   = not np.isnan(mode_approx) and (80 <= mode_approx <= 190)
+        kde_homogeneous = not np.isnan(kde_max)     and (kde_max > 0.01)
 
         if mode_in_range and kde_homogeneous:
-            log(f"  BOTH S&M conditions met.")
-            log(f"  The naive χ²(9) critical value (16.9) is unreliable for this subset.")
-            log(f"  A marginal χ² result is expected even under a natural data-generating")
-            log(f"  process. Simulation-based critical values (S&M 2011, Eq. 6) are required")
-            log(f"  for a definitive test; the last-digit test [F7b] is more appropriate here.")
-        elif mode_in_range or kde_homogeneous:
-            log(f"  ONE S&M condition met. Moderate inflation of χ² possible.")
-            log(f"  Treat marginal results with caution; prefer [F7b] for this subset.")
+            log(f"  Both S&M station-level conditions met (unexpected at Dong level).")
+            log(f"  Simulation-based critical values (S&M 2011, Eq. 6) are warranted.")
         else:
-            log(f"  Neither S&M condition met. Naive χ² test is more reliable here.")
+            log(f"  Neither S&M station-level condition met (expected at Dong aggregation).")
+            log(f"  The naive χ² test is more reliable at this aggregation level, but the")
+            log(f"  S&M framework does not formally cover Dong-level data.  Cross-election")
+            log(f"  consistency of chi-squares and the [F7b] last-digit result are the")
+            log(f"  primary forensic indicators.")
 
         # [F7b] Last-digit uniformity on metro early votes
         log(f"\n  [F7b] Last-Digit – Metro gwannaesa_dem")
