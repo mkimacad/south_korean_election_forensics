@@ -115,6 +115,14 @@ PROV_FULL_TO_SHORT = {
     '경상북도': '경북', '경상남도': '경남', '제주특별자치도': '제주',
 }
 
+# The 22 dynamic age-gender columns we will track
+AGE_GENDER_COLS = [
+    'pct_m_1824', 'pct_m_2529', 'pct_m_3034', 'pct_m_3539', 'pct_m_4044', 'pct_m_4549', 
+    'pct_m_5054', 'pct_m_5559', 'pct_m_6064', 'pct_m_6569', 'pct_m_70plus',
+    'pct_f_1824', 'pct_f_2529', 'pct_f_3034', 'pct_f_3539', 'pct_f_4044', 'pct_f_4549', 
+    'pct_f_5054', 'pct_f_5559', 'pct_f_6064', 'pct_f_6569', 'pct_f_70plus'
+]
+
 # ==========================================
 # SHARED NAME NORMALISATION UTILITIES
 # ==========================================
@@ -185,7 +193,7 @@ def _detect_year_prefix(df: pd.DataFrame) -> str:
     raise ValueError("Cannot detect census year prefix.")
 
 def load_census_csv(csv_path: str) -> pd.DataFrame:
-    print(f"\n--- [1/5] Loading Demographic Census Data (5-year intervals) ---")
+    print(f"\n--- [1/5] Loading Demographic Census Data (Age-Gender cohorts) ---")
     if not os.path.exists(csv_path): return pd.DataFrame()
     try:
         try: df = pd.read_csv(csv_path, encoding='utf-8', low_memory=False)
@@ -193,24 +201,15 @@ def load_census_csv(csv_path: str) -> pd.DataFrame:
 
         prefix = _detect_year_prefix(df)
         
-        cols_1824 = [f"{prefix}_계_{a}세" for a in range(18, 25)]
-        cols_2529 = [f"{prefix}_계_{a}세" for a in range(25, 30)]
-        cols_3034 = [f"{prefix}_계_{a}세" for a in range(30, 35)]
-        cols_3539 = [f"{prefix}_계_{a}세" for a in range(35, 40)]
-        cols_4044 = [f"{prefix}_계_{a}세" for a in range(40, 45)]
-        cols_4549 = [f"{prefix}_계_{a}세" for a in range(45, 50)]
-        cols_5054 = [f"{prefix}_계_{a}세" for a in range(50, 55)]
-        cols_5559 = [f"{prefix}_계_{a}세" for a in range(55, 60)]
-        cols_6064 = [f"{prefix}_계_{a}세" for a in range(60, 65)]
-        cols_6569 = [f"{prefix}_계_{a}세" for a in range(65, 70)]
-        cols_70plus = [f"{prefix}_계_{a}세" for a in range(70, 100)] + [f"{prefix}_계_100세 이상"]
-        
-        cols_male_all = [f"{prefix}_남_{a}세" for a in range(18, 100)] + [f"{prefix}_남_100세 이상"]
+        # 1. Total voting population (18+)
         voting_age_cols = ([f"{prefix}_계_{a}세" for a in range(18, 100)] + [f"{prefix}_계_100세 이상"])
-        cols_4059 = [f"{prefix}_계_{a}세" for a in range(40, 60)]
+        cols_4059 = [f"{prefix}_계_{a}세" for a in range(40, 60)] # Legacy propensity
 
-        all_target_cols = cols_1824 + cols_2529 + cols_3034 + cols_3539 + cols_4044 + cols_4549 + \
-                          cols_5054 + cols_5559 + cols_6064 + cols_6569 + cols_70plus + cols_male_all + voting_age_cols
+        all_target_cols = list(voting_age_cols)
+        for g in ['남', '여']:
+            for a in range(18, 100):
+                all_target_cols.append(f"{prefix}_{g}_{a}세")
+            all_target_cols.append(f"{prefix}_{g}_100세 이상")
         
         for col in set(all_target_cols):
             if col in df.columns:
@@ -220,19 +219,22 @@ def load_census_csv(csv_path: str) -> pd.DataFrame:
         df['total_voting_pop'] = df[[c for c in voting_age_cols if c in df.columns]].sum(axis=1)
         df = df[df['total_voting_pop'] > 0].copy()
 
-        df['pct_1824']   = df[[c for c in cols_1824 if c in df.columns]].sum(axis=1) / df['total_voting_pop']
-        df['pct_2529']   = df[[c for c in cols_2529 if c in df.columns]].sum(axis=1) / df['total_voting_pop']
-        df['pct_3034']   = df[[c for c in cols_3034 if c in df.columns]].sum(axis=1) / df['total_voting_pop']
-        df['pct_3539']   = df[[c for c in cols_3539 if c in df.columns]].sum(axis=1) / df['total_voting_pop']
-        df['pct_4044']   = df[[c for c in cols_4044 if c in df.columns]].sum(axis=1) / df['total_voting_pop']
-        df['pct_4549']   = df[[c for c in cols_4549 if c in df.columns]].sum(axis=1) / df['total_voting_pop']
-        df['pct_5054']   = df[[c for c in cols_5054 if c in df.columns]].sum(axis=1) / df['total_voting_pop']
-        df['pct_5559']   = df[[c for c in cols_5559 if c in df.columns]].sum(axis=1) / df['total_voting_pop']
-        df['pct_6064']   = df[[c for c in cols_6064 if c in df.columns]].sum(axis=1) / df['total_voting_pop']
-        df['pct_6569']   = df[[c for c in cols_6569 if c in df.columns]].sum(axis=1) / df['total_voting_pop']
-        df['pct_70plus'] = df[[c for c in cols_70plus if c in df.columns]].sum(axis=1) / df['total_voting_pop']
+        # 2. Extract 5-year Age-Gender Cohorts dynamically
+        ranges = [(18, 25, '1824'), (25, 30, '2529'), (30, 35, '3034'), (35, 40, '3539'),
+                  (40, 45, '4044'), (45, 50, '4549'), (50, 55, '5054'), (55, 60, '5559'),
+                  (60, 65, '6064'), (65, 70, '6569')]
+        
+        for g, g_str in [('남', 'm'), ('여', 'f')]:
+            for r_start, r_end, r_str in ranges:
+                cols = [f"{prefix}_{g}_{a}세" for a in range(r_start, r_end)]
+                col_name = f'pct_{g_str}_{r_str}'
+                df[col_name] = df[[c for c in cols if c in df.columns]].sum(axis=1) / df['total_voting_pop']
+            
+            # 70+ logic
+            cols_70 = [f"{prefix}_{g}_{a}세" for a in range(70, 100)] + [f"{prefix}_{g}_100세 이상"]
+            col_name_70 = f'pct_{g_str}_70plus'
+            df[col_name_70] = df[[c for c in cols_70 if c in df.columns]].sum(axis=1) / df['total_voting_pop']
 
-        df['pct_male']               = df[[c for c in cols_male_all if c in df.columns]].sum(axis=1) / df['total_voting_pop']
         df['demographic_propensity'] = df[[c for c in cols_4059 if c in df.columns]].sum(axis=1) / df['total_voting_pop']
 
         def extract_census_keys(admin_name):
@@ -249,20 +251,18 @@ def load_census_csv(csv_path: str) -> pd.DataFrame:
         rows = []
         for _, row in df.iterrows():
             sgg_cands, dong_norm = extract_census_keys(row['행정구역'])
-            rows.append({
+            row_dict = {
                 'sgg_candidates': sgg_cands, 'primary_sgg': sgg_cands[0] if sgg_cands else "",
                 'dong_norm': dong_norm, 'dong_raw': row['행정구역'],
-                'demographic_propensity': row['demographic_propensity'],
-                'pct_1824': row['pct_1824'], 'pct_2529': row['pct_2529'],
-                'pct_3034': row['pct_3034'], 'pct_3539': row['pct_3539'],
-                'pct_4044': row['pct_4044'], 'pct_4549': row['pct_4549'],
-                'pct_5054': row['pct_5054'], 'pct_5559': row['pct_5559'],
-                'pct_6064': row['pct_6064'], 'pct_6569': row['pct_6569'],
-                'pct_70plus': row['pct_70plus'], 'pct_male': row['pct_male'],
-            })
+                'demographic_propensity': row['demographic_propensity']
+            }
+            # Append all 22 age-gender cohorts
+            for col in AGE_GENDER_COLS:
+                row_dict[col] = row.get(col, np.nan)
+            rows.append(row_dict)
 
         census = pd.DataFrame(rows)
-        print(f"    Loaded {len(census):,} census rows with 5-year intervals.")
+        print(f"    Loaded {len(census):,} census rows with 22 Age-Gender cohorts.")
         return census
     except Exception as e:
         print(f"[!] Error processing census CSV: {e}")
@@ -426,21 +426,10 @@ def merge_dong_with_covariates(df_election: pd.DataFrame, df_census: pd.DataFram
         census_lookup = {}; census_by_sgg = {}
         for _, row in df_census.iterrows():
             dnorm = row['dong_norm']
-            covs = {
-                'demographic_propensity': row['demographic_propensity'],
-                'pct_1824': row.get('pct_1824', np.nan),
-                'pct_2529': row.get('pct_2529', np.nan),
-                'pct_3034': row.get('pct_3034', np.nan),
-                'pct_3539': row.get('pct_3539', np.nan),
-                'pct_4044': row.get('pct_4044', np.nan),
-                'pct_4549': row.get('pct_4549', np.nan),
-                'pct_5054': row.get('pct_5054', np.nan),
-                'pct_5559': row.get('pct_5559', np.nan),
-                'pct_6064': row.get('pct_6064', np.nan),
-                'pct_6569': row.get('pct_6569', np.nan),
-                'pct_70plus': row.get('pct_70plus', np.nan),
-                'pct_male': row.get('pct_male', np.nan),
-            }
+            covs = {'demographic_propensity': row['demographic_propensity']}
+            for c in AGE_GENDER_COLS:
+                covs[c] = row.get(c, np.nan)
+                
             for sgg in row['sgg_candidates']:
                 census_lookup[(sgg, dnorm)] = covs
                 census_by_sgg.setdefault(sgg, []).append(dnorm)
@@ -466,9 +455,7 @@ def merge_dong_with_covariates(df_election: pd.DataFrame, df_census: pd.DataFram
                         if m and (sgg, m[0]) in census_lookup: covs = census_lookup[(sgg, m[0])]; break
             
             if covs is None:
-                covs = {k: np.nan for k in ['demographic_propensity', 'pct_1824', 'pct_2529', 'pct_3034', 
-                                            'pct_3539', 'pct_4044', 'pct_4549', 'pct_5054', 'pct_5559', 
-                                            'pct_6064', 'pct_6569', 'pct_70plus', 'pct_male']}
+                covs = {k: np.nan for k in ['demographic_propensity'] + AGE_GENDER_COLS}
 
             rd = row.to_dict(); rd.update(covs)
             results.append(rd)
@@ -488,37 +475,36 @@ def merge_dong_with_covariates(df_election: pd.DataFrame, df_census: pd.DataFram
     else:
         df_out['log_apt_price'] = 0.0
 
-    return df_out[df_out['pct_4044'].notna()].copy()
+    return df_out[df_out['pct_f_4044'].notna()].copy()
 
 def merge_const_with_covariates(df_const: pd.DataFrame, df_dong_merged: pd.DataFrame) -> pd.DataFrame:
-    if df_dong_merged.empty or 'pct_4044' not in df_dong_merged.columns:
+    if df_dong_merged.empty or 'pct_f_4044' not in df_dong_merged.columns:
         return df_const.copy()
 
     const_key = ['시도명', '선거구명']
-    dm = df_dong_merged.dropna(subset=['pct_4044']).copy()
-    
-    age_cols = ['pct_1824', 'pct_2529', 'pct_3034', 'pct_3539', 'pct_4044', 'pct_4549', 
-                'pct_5054', 'pct_5559', 'pct_6064', 'pct_6569', 'pct_70plus', 'pct_male']
+    dm = df_dong_merged.dropna(subset=['pct_f_4044']).copy()
     
     agg_funcs = {'_reg': ('sum_people', 'sum')}
-    for col in age_cols:
+    for col in AGE_GENDER_COLS:
         dm[f'_pw_{col}'] = dm[col] * dm['sum_people']
         agg_funcs[f'_pw_{col}_sum'] = (f'_pw_{col}', 'sum')
 
+    out_cols = list(AGE_GENDER_COLS)
+    
     if 'log_apt_price' in dm.columns:
         dm['_pw_log_apt_price'] = dm['log_apt_price'] * dm['sum_people']
         agg_funcs['_pw_log_apt_price_sum'] = ('_pw_log_apt_price', 'sum')
         
     agg = dm.groupby(const_key).agg(**agg_funcs).reset_index()
     
-    for col in age_cols:
+    for col in AGE_GENDER_COLS:
         agg[col] = agg[f'_pw_{col}_sum'] / agg['_reg'].replace(0, np.nan)
 
     if 'log_apt_price' in dm.columns:
         agg['log_apt_price'] = agg['_pw_log_apt_price_sum'] / agg['_reg'].replace(0, np.nan)
-        age_cols.append('log_apt_price')
+        out_cols.append('log_apt_price')
 
-    return df_const.merge(agg[const_key + age_cols], on=const_key, how='left')
+    return df_const.merge(agg[const_key + out_cols], on=const_key, how='left')
 
 
 # ==========================================
@@ -607,52 +593,52 @@ def run_causal_analysis(dm: pd.DataFrame, cm: pd.DataFrame):
         logs.append(msg)
 
     log("\n" + "="*55)
-    log("  LEVEL C │ Causal Inference & Regression (5-Year Intervals)")
+    log("  LEVEL C │ Causal Inference & Regression (Age-Gender Cohorts)")
     log("="*55)
 
-    age_cols = ['pct_1824', 'pct_2529', 'pct_3034', 'pct_3539', 'pct_4549', 'pct_5054', 'pct_5559', 'pct_6064', 'pct_6569', 'pct_70plus']
+    # Use all age-gender cohorts EXCEPT pct_f_4044 to avoid dummy variable trap
+    model_age_gender_cols = [c for c in AGE_GENDER_COLS if c != 'pct_f_4044']
     
-    # 1. Prepare Dong Level Model
-    req_cols = ['gap', 'pct_male', 'province_tag', 'urban_type', 'is_military', 'sum_people', 'log_apt_price'] + age_cols
+    req_cols = ['gap', 'province_tag', 'urban_type', 'is_military', 'sum_people', 'log_apt_price'] + AGE_GENDER_COLS
     df_mod = dm.dropna(subset=req_cols).copy()
     
     scaler = StandardScaler()
-    cont_cols = age_cols + ['pct_male', 'log_apt_price']
+    cont_cols = model_age_gender_cols + ['log_apt_price']
     df_mod[cont_cols] = scaler.fit_transform(df_mod[cont_cols])
     
-    age_formula_str = " + ".join(age_cols)
+    age_gender_formula_str = " + ".join(model_age_gender_cols)
     
-    formula_gap = f'gap ~ {age_formula_str} + pct_male + is_military + log_apt_price + C(province_tag) + C(urban_type)'
+    formula_gap = f'gap ~ {age_gender_formula_str} + is_military + log_apt_price + C(province_tag) + C(urban_type)'
     model_gap = smf.wls(formula_gap, data=df_mod, weights=df_mod['sum_people']).fit(cov_type='HC3')
     log("\n[C1] Mobilization Test (WLS Gap Regression summary attached to report)")
     
-    formula_ratio = f'early_pct ~ sameday_pct + {age_formula_str} + pct_male + is_military + log_apt_price + C(province_tag) + C(urban_type)'
+    formula_ratio = f'early_pct ~ sameday_pct + {age_gender_formula_str} + is_military + log_apt_price + C(province_tag) + C(urban_type)'
     model_ratio = smf.wls(formula_ratio, data=df_mod, weights=df_mod['sum_people']).fit(cov_type='HC3')
     log("[C2] Algorithmic Ratio Test (WLS Ratio Regression summary attached to report)")
 
     df_mod['residual_gap'] = model_gap.resid
     df_mod['fitted_gap']   = model_gap.fittedvalues
 
-    # 2. Prepare Constituency Level Model
-    req_cols_c = ['gap', 'pct_male', 'province_tag', 'sum_people', 'log_apt_price'] + age_cols
+    # Constituency Level Model
+    req_cols_c = ['gap', 'province_tag', 'sum_people', 'log_apt_price'] + AGE_GENDER_COLS
     cm_mod = cm.dropna(subset=req_cols_c).copy()
     if not cm_mod.empty:
         cm_mod[cont_cols] = scaler.fit_transform(cm_mod[cont_cols])
-        formula_gap_c = f'gap ~ {age_formula_str} + pct_male + log_apt_price + C(province_tag)'
+        formula_gap_c = f'gap ~ {age_gender_formula_str} + log_apt_price + C(province_tag)'
         model_gap_c = smf.wls(formula_gap_c, data=cm_mod, weights=cm_mod['sum_people']).fit(cov_type='HC3')
         cm_mod['residual_gap'] = model_gap_c.resid
 
-    # 3. Propensity Score Calculation
+    # Propensity Score Calculation
     median_turnout = df_mod['gwannaesa_total'].median()
     df_mod['D_high_early'] = (df_mod['gwannaesa_total'] > median_turnout).astype(int)
 
     urban_dummies = pd.get_dummies(df_mod['urban_type'], drop_first=True)
     prov_dummies = pd.get_dummies(df_mod['province_tag'], drop_first=True)
     
-    X = pd.concat([df_mod[age_cols + ['pct_male', 'is_military', 'log_apt_price']], urban_dummies, prov_dummies], axis=1)
+    X = pd.concat([df_mod[model_age_gender_cols + ['is_military', 'log_apt_price']], urban_dummies, prov_dummies], axis=1)
     y = df_mod['D_high_early']
     
-    lr = LogisticRegression(solver='liblinear', max_iter=500)
+    lr = LogisticRegression(solver='liblinear', max_iter=1000)
     lr.fit(X, y)
     df_mod['propensity_score'] = lr.predict_proba(X)[:, 1]
 
@@ -671,7 +657,7 @@ def run_causal_analysis(dm: pd.DataFrame, cm: pd.DataFrame):
     
     log("\n[C3] Propensity Score Matching (ATT)")
     log(f"Treatment: High Early Turnout Volume (> {median_turnout:,.0f} votes)")
-    log(f"Matched on: 5-Year Age Bins, Gender, Urbanization, Wealth, Region, Military")
+    log(f"Matched on: 21 Age-Gender Cohorts, Urbanization, Wealth, Region, Military")
     log(f"  Treated Dem Vote Share Mean: {treated_mean*100:.2f}%")
     log(f"  Matched Control Share Mean : {matched_control_mean*100:.2f}%")
     log(f"  Estimated ATT              : {att*100:+.2f}%")
@@ -849,8 +835,7 @@ def plot_dashboard(results: dict, out_path: str, title: str):
 
 def plot_statistical_report(results: dict, out_path: str, title: str):
     print(f"Generating statistical report image → {out_path}")
-    # Increased figsize significantly to accommodate the massive 5-year interval regression table
-    fig, ax = plt.subplots(figsize=(14, 24))
+    fig, ax = plt.subplots(figsize=(14, 28))
     ax.axis('off')
     
     text = f"=== STATISTICAL DIAGNOSTIC REPORT: {title} ===\n\n"
@@ -864,8 +849,7 @@ def plot_statistical_report(results: dict, out_path: str, title: str):
     text += "[C2] Algorithmic Ratio Test (WLS Ratio Regression)\n"
     text += results['mod_ratio'].summary().as_text() + "\n"
     
-    # Increased font size to 8.5 for better readability in the final image
-    ax.text(0.01, 0.99, text, fontsize=8.5, va='top', ha='left')
+    ax.text(0.01, 0.99, text, fontsize=7.5, va='top', ha='left')
     plt.tight_layout()
     plt.savefig(out_path, dpi=200, bbox_inches='tight')
     print(f"Saved statistical report → '{out_path}'")
