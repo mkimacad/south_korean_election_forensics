@@ -22,7 +22,7 @@ ELECTION_CONFIGS = {
     21: {
         'census_csv':    '21st_election_census.csv',
         'result_csv':    '21st_election_result.csv',
-        'apt_csv_glob':  '*21st_election_*_apt_price.csv', 
+        'apt_csv_glob':  '*21st_election_*_apt_price.csv',
         'dem_pattern':   r'더불어민주당',
         'con_pattern':   r'미래통합당|자유한국당',
         'label':         '21st General Election (2020)'
@@ -30,7 +30,7 @@ ELECTION_CONFIGS = {
     22: {
         'census_csv':    '22nd_election_census.csv',
         'result_csv':    '22nd_election_result.csv',
-        'apt_csv_glob':  '*22nd_election_*_apt_price.csv', 
+        'apt_csv_glob':  '*22nd_election_*_apt_price.csv',
         'dem_pattern':   r'더불어민주당',
         'con_pattern':   r'국민의힘',
         'label':         '22nd General Election (2024)'
@@ -56,9 +56,9 @@ PROV_FULL_TO_SHORT = {
 }
 
 AGE_GENDER_COLS = [
-    'pct_m_1824', 'pct_m_2529', 'pct_m_3034', 'pct_m_3539', 'pct_m_4044', 'pct_m_4549', 
+    'pct_m_1824', 'pct_m_2529', 'pct_m_3034', 'pct_m_3539', 'pct_m_4044', 'pct_m_4549',
     'pct_m_5054', 'pct_m_5559', 'pct_m_6064', 'pct_m_6569', 'pct_m_70plus',
-    'pct_f_1824', 'pct_f_2529', 'pct_f_3034', 'pct_f_3539', 'pct_f_4044', 'pct_f_4549', 
+    'pct_f_1824', 'pct_f_2529', 'pct_f_3034', 'pct_f_3539', 'pct_f_4044', 'pct_f_4549',
     'pct_f_5054', 'pct_f_5559', 'pct_f_6064', 'pct_f_6569', 'pct_f_70plus'
 ]
 
@@ -111,9 +111,9 @@ def check_military_zone(row):
     sgg = str(row.get('area2_name', ''))
     dong = str(row.get('name', ''))
     military_dongs = [
-        '진동면', '군내면', '장단면', '파평면', '중면', '장남면', '백학면', '왕징면', 
-        '근북면', '근동면', '원동면', '원남면', '임남면', '동송읍', '철원읍', 
-        '상서면', '서화면', '방산면', '해안면', '현내면', 
+        '진동면', '군내면', '장단면', '파평면', '중면', '장남면', '백학면', '왕징면',
+        '근북면', '근동면', '원동면', '원남면', '임남면', '동송읍', '철원읍',
+        '상서면', '서화면', '방산면', '해안면', '현내면',
         '백령면', '대청면', '연평면', '신도안면', '오천읍', '고경면'
     ]
     if any(m_dong in dong for m_dong in military_dongs): return 1
@@ -137,13 +137,13 @@ def load_census_csv(csv_path: str) -> pd.DataFrame:
 
         prefix = _detect_year_prefix(df)
         voting_age_cols = ([f"{prefix}_계_{a}세" for a in range(18, 100)] + [f"{prefix}_계_100세 이상"])
-        
+
         all_target_cols = list(voting_age_cols)
         for g in ['남', '여']:
             for a in range(18, 100):
                 all_target_cols.append(f"{prefix}_{g}_{a}세")
             all_target_cols.append(f"{prefix}_{g}_100세 이상")
-        
+
         for col in set(all_target_cols):
             if col in df.columns:
                 df[col] = df[col].astype(str).str.replace(',', '', regex=False).pipe(pd.to_numeric, errors='coerce').fillna(0)
@@ -156,13 +156,13 @@ def load_census_csv(csv_path: str) -> pd.DataFrame:
         ranges = [(18, 25, '1824'), (25, 30, '2529'), (30, 35, '3034'), (35, 40, '3539'),
                   (40, 45, '4044'), (45, 50, '4549'), (50, 55, '5054'), (55, 60, '5559'),
                   (60, 65, '6064'), (65, 70, '6569')]
-        
+
         for g, g_str in [('남', 'm'), ('여', 'f')]:
             for r_start, r_end, r_str in ranges:
                 cols = [f"{prefix}_{g}_{a}세" for a in range(r_start, r_end)]
                 col_name = f'pct_{g_str}_{r_str}'
                 df[col_name] = df[[c for c in cols if c in df.columns]].sum(axis=1) / df['total_voting_pop']
-            
+
             cols_70 = [f"{prefix}_{g}_{a}세" for a in range(70, 100)] + [f"{prefix}_{g}_100세 이상"]
             col_name_70 = f'pct_{g_str}_70plus'
             df[col_name_70] = df[[c for c in cols_70 if c in df.columns]].sum(axis=1) / df['total_voting_pop']
@@ -197,7 +197,7 @@ def load_census_csv(csv_path: str) -> pd.DataFrame:
 def load_apt_csv(glob_pattern: str) -> pd.DataFrame:
     file_list = glob.glob(glob_pattern)
     if not file_list: return pd.DataFrame()
-        
+
     df_list = []
     for file in file_list:
         try:
@@ -205,25 +205,25 @@ def load_apt_csv(glob_pattern: str) -> pd.DataFrame:
             except UnicodeDecodeError: df_temp = pd.read_csv(file, encoding='cp949', skiprows=15)
             df_list.append(df_temp)
         except Exception: pass
-            
+
     if not df_list: return pd.DataFrame()
     df = pd.concat(df_list, ignore_index=True)
-    
+
     try:
         df['거래금액(만원)'] = pd.to_numeric(df['거래금액(만원)'].astype(str).str.replace(',', '').str.strip(), errors='coerce')
         df['전용면적(㎡)'] = pd.to_numeric(df['전용면적(㎡)'], errors='coerce')
         df['price_per_sqm'] = df['거래금액(만원)'] / df['전용면적(㎡)']
-        
+
         def parse_loc(x):
             parts = str(x).split()
             prov = PROV_FULL_TO_SHORT.get(parts[0], parts[0]) if len(parts) > 0 else ""
             if len(parts) > 2:
                 sgg = normalize_sigungu(parts[1])[0] if normalize_sigungu(parts[1]) else ""
             else:
-                sgg = "" 
+                sgg = ""
             dong = normalize_dong_name(parts[-1]) if len(parts) > 0 else ""
             return pd.Series([prov, sgg, dong])
-            
+
         df[['prov', 'sgg', 'dong_norm']] = df['시군구'].apply(parse_loc)
         apt_agg = df.groupby(['prov', 'sgg', 'dong_norm'])['price_per_sqm'].median().reset_index()
         apt_agg.rename(columns={'price_per_sqm': 'median_apt_price_sqm'}, inplace=True)
@@ -299,7 +299,7 @@ def merge_dong_with_covariates(df_election: pd.DataFrame, df_census: pd.DataFram
                     if pool:
                         m = get_close_matches(dk, pool, n=1, cutoff=0.82)
                         if m and (sgg, m[0]) in census_lookup: covs = census_lookup[(sgg, m[0])]; break
-            
+
             if covs is None: covs = {k: np.nan for k in AGE_GENDER_COLS}
             rd = row.to_dict(); rd.update(covs)
             results.append(rd)
@@ -325,10 +325,10 @@ def merge_dong_with_covariates(df_election: pd.DataFrame, df_census: pd.DataFram
 # ==========================================
 def run_pooled_shift_regression(dm_21: pd.DataFrame, dm_22: pd.DataFrame) -> dict:
     MIN_VOTES = 50
-    
+
     dm_21 = dm_21[(dm_21['total_votes'] > MIN_VOTES) & (dm_21['total_dem'] > 0)].copy()
     dm_21['is_22nd'] = 0
-    
+
     dm_22 = dm_22[(dm_22['total_votes'] > MIN_VOTES) & (dm_22['total_dem'] > 0)].copy()
     dm_22['is_22nd'] = 1
 
@@ -339,8 +339,19 @@ def run_pooled_shift_regression(dm_21: pd.DataFrame, dm_22: pd.DataFrame) -> dic
     req_cols = ['vote_share', 'is_22nd', 'province_tag', 'urban_type', 'is_military', 'sum_people', 'log_apt_price'] + AGE_GENDER_COLS
     df_mod = df_pooled.dropna(subset=req_cols).copy()
 
-    scaler = StandardScaler()
     cont_cols = model_age_gender_cols + ['log_apt_price']
+
+    # --- NEW: Print the real-world standard deviations before scaling ---
+    print("\n--- Standard Deviations of Continuous Variables (1 SD = ...) ---")
+    for col in cont_cols:
+        raw_sd = df_mod[col].std()
+        if col.startswith('pct_'):
+            print(f"  {col}: {raw_sd:.4f} ({raw_sd*100:.2f}%)")
+        else:
+            print(f"  {col}: {raw_sd:.4f}")
+    print("--------------------------------------------------------------\n")
+
+    scaler = StandardScaler()
     df_mod[cont_cols] = scaler.fit_transform(df_mod[cont_cols])
 
     base_covariates = f"{' + '.join(model_age_gender_cols)} + is_military + log_apt_price + C(province_tag) + C(urban_type)"
@@ -349,10 +360,10 @@ def run_pooled_shift_regression(dm_21: pd.DataFrame, dm_22: pd.DataFrame) -> dic
     cohort_shift = " + ".join([f"is_22nd:{c}" for c in model_age_gender_cols])
 
     formula = f"vote_share ~ {base_covariates} + {national_shift} + {regional_shift} + {cohort_shift}"
-    
-    print("\nFitting Pooled DiD-Style Regression Model...")
+
+    print("Fitting Pooled DiD-Style Regression Model...")
     model = smf.wls(formula, data=df_mod, weights=df_mod['sum_people']).fit(cov_type='HC3')
-    
+
     print(f"Model R²: {model.rsquared*100:.2f}%")
     df_mod['residual'] = model.resid
     df_mod['fitted']   = model.fittedvalues
@@ -365,42 +376,44 @@ def run_pooled_shift_regression(dm_21: pd.DataFrame, dm_22: pd.DataFrame) -> dic
 def plot_shift_dashboard(results: dict, out_path: str):
     model = results['model']
     df_mod = results['df']
-    
+
     # ----------------------------------------------------
     # 1. EXTRACT COEFFICIENTS USING JOINT VARIANCE
     # ----------------------------------------------------
     params = model.params
     cov_mat = model.cov_params()
-    
+
     # Identify base covariates (exclude Intercept and pure national shift term)
     base_names = [c for c in params.index if ':' not in c and c not in ['Intercept', 'is_22nd']]
-    
+
     data = []
     for b in base_names:
-        est_21 = params[b]
-        se_21 = np.sqrt(cov_mat.loc[b, b])
-        
+        # --- NEW: Multiply by 100 to convert from proportion to percentage points ---
+        est_21 = params[b] * 100
+        se_21 = np.sqrt(cov_mat.loc[b, b]) * 100
+
         # Format the interaction column name correctly for statsmodels
         shift_col = f"is_22nd:{b}"
-        
+
         if shift_col in params:
-            est_shift = params[shift_col]
+            est_shift = params[shift_col] * 100
             est_22 = est_21 + est_shift
             # Joint Variance: Var(A+B) = Var(A) + Var(B) + 2Cov(A,B)
+            # The standard error is calculated, then multiplied by 100 for scaling.
             var_22 = cov_mat.loc[b, b] + cov_mat.loc[shift_col, shift_col] + 2 * cov_mat.loc[b, shift_col]
-            se_22 = np.sqrt(var_22)
+            se_22 = np.sqrt(var_22) * 100
         else:
             est_22 = est_21
             se_22 = se_21
-            
+
         data.append({
             'feature': b,
             'est_21': est_21, 'err_21': 1.96 * se_21,
             'est_22': est_22, 'err_22': 1.96 * se_22
         })
-        
+
     df_coef = pd.DataFrame(data).set_index('feature')
-    
+
     # Clean index names for presentation
     df_coef.index = df_coef.index.str.replace('C(province_tag)[T.', 'Region: ', regex=False).str.replace(']', '', regex=False)
     df_coef.index = df_coef.index.str.replace('C(urban_type)[T.', 'Urban: ', regex=False).str.replace(']', '', regex=False)
@@ -416,7 +429,7 @@ def plot_shift_dashboard(results: dict, out_path: str):
     # SUBPLOT 1: Coefficient Dumbbell Plot (Spans both columns)
     ax_coef = fig.add_subplot(gs[0, :])
     y_pos = np.arange(len(df_coef))
-    
+
     # Plot connecting line to emphasize shift direction
     for i in range(len(df_coef)):
         ax_coef.plot([df_coef['est_21'].iloc[i], df_coef['est_22'].iloc[i]], [y_pos[i]-0.15, y_pos[i]+0.15], color='gray', alpha=0.3, zorder=1)
@@ -424,12 +437,13 @@ def plot_shift_dashboard(results: dict, out_path: str):
     # Plot 21st and 22nd point estimates with Error Bars
     ax_coef.errorbar(df_coef['est_21'], y_pos - 0.15, xerr=df_coef['err_21'], fmt='o', color='dodgerblue', markersize=6, elinewidth=2, label='21st Election (2020)', zorder=2)
     ax_coef.errorbar(df_coef['est_22'], y_pos + 0.15, xerr=df_coef['err_22'], fmt='o', color='crimson', markersize=6, elinewidth=2, label='22nd Election (2024)', zorder=3)
-    
+
     ax_coef.axvline(0, color='black', linestyle='--', linewidth=1)
     ax_coef.set_yticks(y_pos)
     ax_coef.set_yticklabels(df_coef.index, fontsize=11)
     ax_coef.set_title(f'Coefficient Shift Per Election (Derived from Pooled Model)', fontsize=14)
-    ax_coef.set_xlabel('Effect on Dem Vote Share (Standardized)', fontsize=12)
+    # --- NEW: Updated label to reflect percentage points ---
+    ax_coef.set_xlabel('Effect on Dem Vote Share (Percentage Points)', fontsize=12)
     ax_coef.legend(fontsize=12, loc='lower right')
 
     # Data separation for predictive scatter/residuals
@@ -450,7 +464,7 @@ def plot_shift_dashboard(results: dict, out_path: str):
 
     ax_avp_21 = fig.add_subplot(gs[1, 0])
     plot_avp(ax_avp_21, df_21, '21st Election (2020)', 'dodgerblue')
-    
+
     ax_avp_22 = fig.add_subplot(gs[1, 1])
     plot_avp(ax_avp_22, df_22, '22nd Election (2024)', 'crimson')
 
@@ -469,7 +483,7 @@ def plot_shift_dashboard(results: dict, out_path: str):
 
     ax_res_21 = fig.add_subplot(gs[2, 0])
     plot_res(ax_res_21, df_21, '21st Election (2020)', 'dodgerblue')
-    
+
     ax_res_22 = fig.add_subplot(gs[2, 1])
     plot_res(ax_res_22, df_22, '22nd Election (2024)', 'crimson')
 
@@ -497,7 +511,7 @@ if __name__ == "__main__":
         df_cen = load_census_csv(cfg['census_csv'])
         df_apt = load_apt_csv(cfg['apt_csv_glob'])
         df_elec = load_election_csv(cfg['result_csv'], cfg['dem_pattern'], cfg['con_pattern'])
-        
+
         if not df_elec.empty:
             datasets[year] = merge_dong_with_covariates(df_elec, df_cen, df_apt)
             print(f"    Merged {len(datasets[year])} districts for {year}st/nd election.")
