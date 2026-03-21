@@ -72,10 +72,11 @@ def setup_korean_font():
 # ==========================================
 # CONFIGURATION
 # ==========================================
-ELECTION_NUM = 22
+ELECTION_NUM = 'pres21'   # options: 21, 22, 'pres21'
 
 ELECTION_CONFIGS = {
     21: {
+        'election_type': 'general',
         'census_csv':    '21st_election_census.csv',
         'result_csv':    '21st_election_result.csv',
         'apt_csv_glob':  '*21st_election_*_apt_price.csv',
@@ -85,6 +86,7 @@ ELECTION_CONFIGS = {
         'dashboard_out': 'mega_forensics_dashboard_21st.png',
     },
     22: {
+        'election_type': 'general',
         'census_csv':    '22nd_election_census.csv',
         'result_csv':    '22nd_election_result.csv',
         'apt_csv_glob':  '*22nd_election_*_apt_price.csv',
@@ -93,14 +95,53 @@ ELECTION_CONFIGS = {
         'label':         '22nd General Election (2024)',
         'dashboard_out': 'mega_forensics_dashboard_22nd.png',
     },
+    # [CHANGE] Presidential election configs.
+    # census_csv / apt_csv_glob are None because no presidential-specific
+    # demographic or housing-price files are provided.  fallback_election_num
+    # tells __main__ which general election config to borrow those files from.
+    #
+    # Fallback selection rationale (prior-election demographics preferred):
+    #   pres20 (Mar 2022) → 21st general (Apr 2020, 23 months prior)
+    #   pres21 (Jun 2025) → 22nd general (Apr 2024, 14 months prior)
+    'pres20': {
+        'election_type':       'presidential',
+        'census_csv':          None,   # use fallback
+        'result_csv':          '20th_presidential_election_result.csv',
+        'apt_csv_glob':        None,   # use fallback
+        'dem_pattern':         r'더불어민주당',
+        'con_pattern':         r'국민의힘',
+        'label':               '20th Presidential Election (2022)',
+        'dashboard_out':       'mega_forensics_dashboard_pres20.png',
+        'fallback_election_num': 21,   # borrow census & apt from 21st general
+    },
+    'pres21': {
+        'election_type':       'presidential',
+        'census_csv':          None,   # use fallback
+        'result_csv':          '21st_presidential_election_result.csv',
+        'apt_csv_glob':        None,   # use fallback
+        'dem_pattern':         r'더불어민주당',
+        'con_pattern':         r'국민의힘',
+        'label':               '21st Presidential Election (2025)',
+        'dashboard_out':       'mega_forensics_dashboard_pres21.png',
+        'fallback_election_num': 22,   # borrow census & apt from 22nd general
+    },
 }
 
 CFG = ELECTION_CONFIGS[ELECTION_NUM]
 
-SPECIAL_DONG_NAMES = {
+# Special 읍면동명 / 법정읍면동명 values that are not real administrative dongs.
+# General elections use 국외부재자투표 variants; presidential elections use 재외투표.
+# load_election_csv selects the right set based on election_type.
+SPECIAL_DONG_NAMES_GENERAL = {
     '거소·선상투표', '관외사전투표', '국외부재자투표',
     '국외부재자투표(공관)', '잘못 투입·구분된 투표지',
 }
+SPECIAL_DONG_NAMES_PRESIDENTIAL = {
+    '거소·선상투표', '관외사전투표', '재외투표',
+    '잘못 투입·구분된 투표지',
+}
+# Legacy alias kept for any direct reference outside load_election_csv
+SPECIAL_DONG_NAMES = SPECIAL_DONG_NAMES_GENERAL
 
 GWANNAESA_LABEL = '관내사전투표'
 GWANOE_LABEL    = '관외사전투표'
@@ -195,6 +236,12 @@ def _detect_year_prefix(df: pd.DataFrame) -> str:
 
 def load_census_csv(csv_path: str) -> pd.DataFrame:
     print(f"\n--- [1/5] Loading Demographic Census Data (Age-Gender cohorts) ---")
+    # [CHANGE] Presidential elections have no dedicated census file; the
+    # caller passes None and we return an empty frame so the rest of the
+    # pipeline degrades gracefully (covariates will be NaN-imputed).
+    if not csv_path:
+        print("    [!] No census CSV specified — covariate columns will be NaN.")
+        return pd.DataFrame()
     if not os.path.exists(csv_path): return pd.DataFrame()
     try:
         try: df = pd.read_csv(csv_path, encoding='utf-8', low_memory=False)
@@ -271,6 +318,10 @@ def load_census_csv(csv_path: str) -> pd.DataFrame:
 
 def load_apt_csv(glob_pattern: str) -> pd.DataFrame:
     print(f"\n--- [2/5] Loading Apartment Transaction Data ({glob_pattern}) ---")
+    # [CHANGE] Presidential elections have no dedicated apt file; caller passes None.
+    if not glob_pattern:
+        print("    [!] No APT CSV glob specified — wealth proxy will be skipped.")
+        return pd.DataFrame()
     file_list = glob.glob(glob_pattern)
 
     if not file_list:
@@ -322,14 +373,44 @@ def load_apt_csv(glob_pattern: str) -> pd.DataFrame:
 # 2. ELECTION CSV LOADER
 # ==========================================
 
-def load_election_csv(csv_path: str, dem_pattern: str, con_pattern: str):
-    print(f"\n--- [3/5] Loading Election Result Data ({csv_path}) ---")
+def load_election_csv(csv_path: str, dem_pattern: str, con_pattern: str,
+                      election_type: str = 'general'):
+    """
+    Load election results into three DataFrames: dong-level, constituency-level,
+    and station-level.
+
+    Presidential vs General differences
+    ─────────────────────────────────────
+    Presidential CSV columns    → renamed to general-election internal names
+      구시군명  (SGU)            → 선거구명   (constituency)
+      읍면동명  (dong)           → 법정읍면동명 (legal dong name)
+
+    After renaming, all downstream merging, forensics, and causal code is
+    identical for both election types.  The only other difference is the set
+    of special 읍면동명 values to exclude (재외투표 vs 국외부재자투표).
+    """
+    print(f"\n--- [3/5] Loading Election Result Data ({csv_path}, type={election_type}) ---")
     try:
-        try: df = pd.read_csv(csv_path, encoding='utf-8', low_memory=False)
+        try: df = pd.read_csv(csv_path, encoding='utf-8-sig', low_memory=False)
         except UnicodeDecodeError: df = pd.read_csv(csv_path, encoding='cp949', low_memory=False)
     except Exception as e:
         print(f"[!] Failed to read election CSV: {e}")
         return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+
+    # ------------------------------------------------------------------
+    # [CHANGE] Presidential column normalisation
+    # Rename 구시군명→선거구명 and 읍면동명→법정읍면동명 so the rest of the
+    # function — and all downstream code — is election-type agnostic.
+    # ------------------------------------------------------------------
+    if election_type == 'presidential':
+        if '구시군명' not in df.columns or '읍면동명' not in df.columns:
+            print("[!] Expected presidential columns (구시군명, 읍면동명) not found.")
+            return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+        df = df.rename(columns={'구시군명': '선거구명', '읍면동명': '법정읍면동명'})
+        special_dong_names = SPECIAL_DONG_NAMES_PRESIDENTIAL
+        print(f"    Presidential format detected: columns normalised.")
+    else:
+        special_dong_names = SPECIAL_DONG_NAMES_GENERAL
 
     df['득표수']       = pd.to_numeric(df['득표수'], errors='coerce').fillna(0).astype(int)
     df['is_dem']      = df['후보자'].str.contains(dem_pattern, case=False, na=False)
@@ -342,15 +423,15 @@ def load_election_csv(csv_path: str, dem_pattern: str, con_pattern: str):
 
     def sgg_cands_from_constituency(name):
         if not isinstance(name, str): return []
+        # General elections may have 갑을병정무 suffixes; presidential 구시군명 does not.
         if '_' in name: return normalize_sigungu(name.split('_', 1)[1])
         return normalize_sigungu(re.sub(r'[갑을병정무]$', '', name).strip())
 
-    df_geo   = df[~df['법정읍면동명'].isin(SPECIAL_DONG_NAMES)].copy()
+    df_geo   = df[~df['법정읍면동명'].isin(special_dong_names)].copy()
     df_votes = df_geo[~df_geo['is_meta']].copy()
 
     gn_dem = df_votes[df_votes['is_dem'] & df_votes['is_gwannaesa']].groupby(dong_key)['득표수'].sum().reset_index(name='gwannaesa_dem')
     gn_tot = df_votes[df_votes['is_gwannaesa']].groupby(dong_key)['득표수'].sum().reset_index(name='gwannaesa_total')
-    # [CHANGE] Add conservative-party gwannaesa votes at dong level — needed by S&M simulation
     gn_con = df_votes[df_votes['is_con'] & df_votes['is_gwannaesa']].groupby(dong_key)['득표수'].sum().reset_index(name='gwannaesa_con')
     sd_dem = df_votes[df_votes['is_dem'] & ~df_votes['is_gwannaesa']].groupby(dong_key)['득표수'].sum().reset_index(name='same_day_dem')
     sd_tot = df_votes[~df_votes['is_gwannaesa']].groupby(dong_key)['득표수'].sum().reset_index(name='same_day_total')
@@ -359,10 +440,32 @@ def load_election_csv(csv_path: str, dem_pattern: str, con_pattern: str):
     sum_vote_geo = df_geo[df_geo['후보자'] == '투표수'].groupby(dong_key)['득표수'].sum().reset_index(name='sum_vote_geo')
 
     df_dong = gn_dem.copy()
-    # [CHANGE] Include gn_con in the dong-level merge chain
     for frame in (gn_tot, gn_con, sd_dem, sd_tot, sum_people_dong, sum_vote_geo):
         df_dong = df_dong.merge(frame, on=dong_key, how='outer')
     df_dong = df_dong.fillna(0)
+
+    # ------------------------------------------------------------------
+    # [CHANGE] Presidential sum_people correction
+    #
+    # In presidential election data, 관내사전투표 선거인수 represents the
+    # actual early voters for each dong — a group that has been REMOVED
+    # from the same-day polling station rolls.  Therefore:
+    #   same-day station 선거인수  = non-early registered voters only
+    #   gwannaesa 선거인수         = actual early voters (≈ gwannaesa 투표수)
+    #   correct total registered   = same-day 선거인수 + gwannaesa 선거인수
+    #
+    # In general election data the same-day 선거인수 already covers all
+    # registered voters (both early and same-day), so no correction is needed.
+    # ------------------------------------------------------------------
+    if election_type == 'presidential':
+        gn_ppl_dong = (
+            df_geo[df_geo['is_gwannaesa'] & (df_geo['후보자'] == '선거인수')]
+            .groupby(dong_key)['득표수'].sum()
+            .reset_index(name='_gn_ppl')
+        )
+        df_dong = df_dong.merge(gn_ppl_dong, on=dong_key, how='left')
+        df_dong['sum_people'] = df_dong['sum_people'] + df_dong['_gn_ppl'].fillna(0)
+        df_dong.drop(columns=['_gn_ppl'], inplace=True)
 
     df_dong['sgg_candidates'] = df_dong['선거구명'].apply(sgg_cands_from_constituency)
     df_dong['primary_sgg']    = df_dong['sgg_candidates'].apply(lambda x: x[0] if x else "")
@@ -375,10 +478,13 @@ def load_election_csv(csv_path: str, dem_pattern: str, con_pattern: str):
 
     gn_dem_c  = df_votes[df_votes['is_dem'] & df_votes['is_gwannaesa']].groupby(const_key)['득표수'].sum().reset_index(name='gwannaesa_dem')
     gn_tot_c  = df_votes[df_votes['is_gwannaesa']].groupby(const_key)['득표수'].sum().reset_index(name='gwannaesa_total')
-    # [CHANGE] Add conservative-party gwannaesa votes at constituency level — needed by S&M simulation
     gn_con_c  = df_votes[df_votes['is_con'] & df_votes['is_gwannaesa']].groupby(const_key)['득표수'].sum().reset_index(name='gwannaesa_con')
     gn_turn_c = df_geo[df_geo['is_gwannaesa'] & (df_geo['후보자'] == '투표수')].groupby(const_key)['득표수'].sum().reset_index(name='gwannaesa_turnout')
 
+    # [CHANGE] For presidential elections, 관외사전투표 rows sit in 법정읍면동명
+    # just as they do in general elections — no structural change needed here.
+    # 재외투표 (overseas) is excluded via special_dong_names and NOT rolled into
+    # gwanoe/sajeong, mirroring how 국외부재자투표 is handled for general elections.
     df_gw  = df[df['법정읍면동명'] == GWANOE_LABEL]
     df_gw_v= df_gw[~df_gw['is_meta']]
     go_dem_c  = df_gw_v[df_gw_v['is_dem']].groupby(const_key)['득표수'].sum().reset_index(name='gwanoe_dem')
@@ -392,7 +498,6 @@ def load_election_csv(csv_path: str, dem_pattern: str, con_pattern: str):
     reg_c = df_dong.groupby(const_key)['sum_people'].sum().reset_index(name='sum_people')
 
     df_const = reg_c.copy()
-    # [CHANGE] Include gn_con_c in the constituency-level merge chain
     for frame in (gn_dem_c, gn_tot_c, gn_con_c, gn_turn_c, go_dem_c, go_tot_c, go_turn_c, sd_dem_c, sd_tot_c, sd_turn_c):
         df_const = df_const.merge(frame, on=const_key, how='left')
     df_const = df_const.fillna(0)
@@ -401,6 +506,24 @@ def load_election_csv(csv_path: str, dem_pattern: str, con_pattern: str):
     df_const['sajeong_total']    = df_const['gwannaesa_total']   + df_const['gwanoe_total']
     df_const['sajeong_turnout']  = df_const['gwannaesa_turnout'] + df_const['gwanoe_turnout']
     df_const['total_turnout']    = df_const['sajeong_turnout']   + df_const['same_day_turnout']
+
+    # ------------------------------------------------------------------
+    # [CHANGE] Presidential sum_people — constituency level
+    #
+    # After the dong-level fix, reg_c already includes gwannaesa 선거인수
+    # within each dong.  But gwanoe (overseas) voters appear at constituency
+    # level only (in the 관외사전투표 special row), so they must be added
+    # separately here to complete the total registered voter denominator.
+    # ------------------------------------------------------------------
+    if election_type == 'presidential':
+        go_ppl_c = (
+            df_gw[df_gw['후보자'] == '선거인수']
+            .groupby(const_key)['득표수'].sum()
+            .reset_index(name='_go_ppl')
+        )
+        df_const = df_const.merge(go_ppl_c, on=const_key, how='left')
+        df_const['sum_people'] = df_const['sum_people'] + df_const['_go_ppl'].fillna(0)
+        df_const.drop(columns=['_go_ppl'], inplace=True)
 
     df_const['sgg_candidates'] = df_const['선거구명'].apply(sgg_cands_from_constituency)
     df_const['primary_sgg']    = df_const['sgg_candidates'].apply(lambda x: x[0] if x else "")
@@ -1498,10 +1621,32 @@ if __name__ == "__main__":
 
     setup_korean_font()
 
-    df_census = load_census_csv(CFG['census_csv'])
-    df_apt = load_apt_csv(CFG['apt_csv_glob'])
+    # ------------------------------------------------------------------
+    # [CHANGE] Resolve census and apt paths, applying fallback logic for
+    # presidential elections that share covariate files with the closest
+    # general election (e.g. pres21 → 22nd general election data).
+    # ------------------------------------------------------------------
+    census_csv   = CFG.get('census_csv')
+    apt_csv_glob = CFG.get('apt_csv_glob')
+    election_type = CFG.get('election_type', 'general')
+
+    if ('fallback_election_num' in CFG) and (census_csv is None or apt_csv_glob is None):
+        fallback_num = CFG['fallback_election_num']
+        fallback_cfg = ELECTION_CONFIGS.get(fallback_num, {})
+        if census_csv is None and fallback_cfg.get('census_csv'):
+            census_csv = fallback_cfg['census_csv']
+            print(f"  [Fallback] Using census from {fallback_cfg['label']}: {census_csv}")
+        if apt_csv_glob is None and fallback_cfg.get('apt_csv_glob'):
+            apt_csv_glob = fallback_cfg['apt_csv_glob']
+            print(f"  [Fallback] Using APT data from {fallback_cfg['label']}: {apt_csv_glob}")
+
+    df_census = load_census_csv(census_csv)
+    df_apt    = load_apt_csv(apt_csv_glob)
     df_dong, df_const, df_station = load_election_csv(
-        CFG['result_csv'], dem_pattern=CFG['dem_pattern'], con_pattern=CFG['con_pattern']
+        CFG['result_csv'],
+        dem_pattern=CFG['dem_pattern'],
+        con_pattern=CFG['con_pattern'],
+        election_type=election_type,
     )
 
     if not df_dong.empty and not df_const.empty:
