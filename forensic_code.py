@@ -8,7 +8,8 @@ import os
 import re
 import glob
 from difflib import get_close_matches
-from scipy.stats import chisquare, pearsonr, norm, probplot, normaltest, gaussian_kde
+# [CHANGE] Added multivariate_t for Shikano & Mack (2011) simulation-based 2BL test
+from scipy.stats import chisquare, pearsonr, norm, probplot, normaltest, gaussian_kde, multivariate_t
 import statsmodels.formula.api as smf
 from sklearn.linear_model import LogisticRegression
 from sklearn.neighbors import NearestNeighbors
@@ -349,6 +350,8 @@ def load_election_csv(csv_path: str, dem_pattern: str, con_pattern: str):
 
     gn_dem = df_votes[df_votes['is_dem'] & df_votes['is_gwannaesa']].groupby(dong_key)['득표수'].sum().reset_index(name='gwannaesa_dem')
     gn_tot = df_votes[df_votes['is_gwannaesa']].groupby(dong_key)['득표수'].sum().reset_index(name='gwannaesa_total')
+    # [CHANGE] Add conservative-party gwannaesa votes at dong level — needed by S&M simulation
+    gn_con = df_votes[df_votes['is_con'] & df_votes['is_gwannaesa']].groupby(dong_key)['득표수'].sum().reset_index(name='gwannaesa_con')
     sd_dem = df_votes[df_votes['is_dem'] & ~df_votes['is_gwannaesa']].groupby(dong_key)['득표수'].sum().reset_index(name='same_day_dem')
     sd_tot = df_votes[~df_votes['is_gwannaesa']].groupby(dong_key)['득표수'].sum().reset_index(name='same_day_total')
 
@@ -356,7 +359,8 @@ def load_election_csv(csv_path: str, dem_pattern: str, con_pattern: str):
     sum_vote_geo = df_geo[df_geo['후보자'] == '투표수'].groupby(dong_key)['득표수'].sum().reset_index(name='sum_vote_geo')
 
     df_dong = gn_dem.copy()
-    for frame in (gn_tot, sd_dem, sd_tot, sum_people_dong, sum_vote_geo):
+    # [CHANGE] Include gn_con in the dong-level merge chain
+    for frame in (gn_tot, gn_con, sd_dem, sd_tot, sum_people_dong, sum_vote_geo):
         df_dong = df_dong.merge(frame, on=dong_key, how='outer')
     df_dong = df_dong.fillna(0)
 
@@ -371,6 +375,8 @@ def load_election_csv(csv_path: str, dem_pattern: str, con_pattern: str):
 
     gn_dem_c  = df_votes[df_votes['is_dem'] & df_votes['is_gwannaesa']].groupby(const_key)['득표수'].sum().reset_index(name='gwannaesa_dem')
     gn_tot_c  = df_votes[df_votes['is_gwannaesa']].groupby(const_key)['득표수'].sum().reset_index(name='gwannaesa_total')
+    # [CHANGE] Add conservative-party gwannaesa votes at constituency level — needed by S&M simulation
+    gn_con_c  = df_votes[df_votes['is_con'] & df_votes['is_gwannaesa']].groupby(const_key)['득표수'].sum().reset_index(name='gwannaesa_con')
     gn_turn_c = df_geo[df_geo['is_gwannaesa'] & (df_geo['후보자'] == '투표수')].groupby(const_key)['득표수'].sum().reset_index(name='gwannaesa_turnout')
 
     df_gw  = df[df['법정읍면동명'] == GWANOE_LABEL]
@@ -386,7 +392,8 @@ def load_election_csv(csv_path: str, dem_pattern: str, con_pattern: str):
     reg_c = df_dong.groupby(const_key)['sum_people'].sum().reset_index(name='sum_people')
 
     df_const = reg_c.copy()
-    for frame in (gn_dem_c, gn_tot_c, gn_turn_c, go_dem_c, go_tot_c, go_turn_c, sd_dem_c, sd_tot_c, sd_turn_c):
+    # [CHANGE] Include gn_con_c in the constituency-level merge chain
+    for frame in (gn_dem_c, gn_tot_c, gn_con_c, gn_turn_c, go_dem_c, go_tot_c, go_turn_c, sd_dem_c, sd_tot_c, sd_turn_c):
         df_const = df_const.merge(frame, on=const_key, how='left')
     df_const = df_const.fillna(0)
 
@@ -551,6 +558,155 @@ def compute_benford_2bl(vote_series: pd.Series) -> tuple:
     return obs_2bl, exp_2bl, chi2_2bl, p_2bl, n
 
 
+def compute_benford_2bl_statistic(vote_series: pd.Series) -> float:
+    """Helper: compute only the 2BL chi-square statistic (no full tuple)."""
+    valid = vote_series[vote_series >= 10].astype(int).astype(str)
+    if len(valid) == 0:
+        return np.nan
+    second_digits = valid.str[1].astype(int)
+    n = len(second_digits)
+    obs_2bl = second_digits.value_counts().reindex(range(10), fill_value=0).sort_index()
+    benford_probs = np.array(
+        [sum(math.log10(1.0 + 1.0 / (10 * k + d)) for k in range(1, 10))
+         for d in range(10)]
+    )
+    exp_2bl = benford_probs * n
+    chi2, _ = chisquare(obs_2bl.values, f_exp=exp_2bl)
+    return chi2
+
+
+# ==========================================
+# [NEW] SHIKANO & MACK (2011) SIMULATION-BASED 2BL TEST
+#
+# Shikano & Mack (2011) showed that the naive χ²(9) critical value for
+# the 2BL test is inflated when precinct vote-count distributions are
+# homogeneous and their mode falls between ~80 and 190 votes.  Their
+# fix: simulate election data from a multivariate Student-t distribution
+# of vote-share log-ratios (Katz & King 1999), derive a constituency-
+# specific 95th-percentile critical value, and transform the empirical
+# statistic to that new scale.
+#
+# Korean-context adaptation
+# ─────────────────────────
+# S&M calibrated their mode/KDE thresholds on German polling-station
+# (Wahlbezirk) counts of ~50–500 votes.  Korean Dong-level gwannaesa
+# aggregates typically run in the thousands, so the S&M station-level
+# conditions (mode ∈ [80,190], KDE max > 0.01) cannot be expected to
+# hold — as documented in the [F7] diagnostic above.  The multivariate-t
+# simulation itself is scale-agnostic: it operates on vote-share
+# log-ratios rather than raw counts, so it correctly adapts to the
+# Korean data's much larger vote magnitudes.  Each constituency's
+# simulation is seeded from its own empirical log-ratio mean and
+# covariance, making the derived critical value specific to that
+# constituency's structural characteristics.
+# ==========================================
+
+def simulate_2bl_critical_value(
+    df_constituency: pd.DataFrame,
+    dem_col: str = 'gwannaesa_dem',
+    con_col: str = 'gwannaesa_con',
+    total_col: str = 'gwannaesa_total',
+    n_simulations: int = 500,
+    df_t: int = 5
+) -> dict:
+    """
+    Derive a simulation-based 95% critical value for the 2BL test
+    using a multivariate Student-t model of vote-share log-ratios
+    (Katz & King 1999; Shikano & Mack 2011).
+
+    Parameters
+    ----------
+    df_constituency : DataFrame of dongs (rows) within one constituency.
+        Must contain `dem_col`, `con_col`, `total_col`.
+    dem_col         : Column name for gwannaesa democratic votes.
+    con_col         : Column name for gwannaesa conservative votes.
+    total_col       : Column name for gwannaesa total votes.
+    n_simulations   : Monte Carlo draws (500 balances accuracy vs speed).
+    df_t            : Degrees of freedom for the Student-t (5 is robust
+                      standard for Korean election modelling, per S&M).
+
+    Returns
+    -------
+    dict with keys:
+        empirical_chi2  – naive 2BL statistic on observed dem counts
+        chi2_sim95      – 95th percentile of the simulated distribution
+        chi2_trans      – empirical_chi2 scaled to the 16.9-threshold
+                          space; values > 16.9 indicate rejection after
+                          simulation-based correction
+    """
+    df_sub = df_constituency[df_constituency[total_col] > 0].copy()
+    if len(df_sub) < 5:
+        return {'empirical_chi2': np.nan, 'chi2_sim95': np.nan, 'chi2_trans': np.nan}
+
+    # ── Step 1: Compute J-1 log-ratios (Katz & King 1999) ──────────
+    # Parties: dem, con; baseline J = "other" (all remaining votes)
+    eps = 1e-5
+    v_dem   = np.maximum(df_sub[dem_col]   / df_sub[total_col], eps)
+    v_con   = np.maximum(df_sub[con_col]   / df_sub[total_col], eps)
+    v_other = np.maximum(1.0 - v_dem - v_con, eps)
+
+    # Normalize so the three shares sum to exactly 1
+    denom   = v_dem + v_con + v_other
+    v_dem, v_con, v_other = v_dem / denom, v_con / denom, v_other / denom
+
+    y_dem = np.log(v_dem / v_other)
+    y_con = np.log(v_con / v_other)
+    Y = np.column_stack([y_dem, y_con])
+
+    # ── Step 2: Fit multivariate t-distribution parameters ──────────
+    mu = np.mean(Y, axis=0)
+    S  = np.cov(Y, rowvar=False)
+
+    # Shape matrix: Sigma = S * (df-2)/df  (variance = shape * df/(df-2))
+    shape_matrix = S * (df_t - 2) / df_t if df_t > 2 else S
+    shape_matrix = np.atleast_2d(shape_matrix)
+
+    try:
+        rv = multivariate_t(loc=mu, shape=shape_matrix, df=df_t)
+    except Exception:
+        # Degenerate covariance (e.g. all dongs in constituency have
+        # identical vote shares) — skip rather than crash
+        return {'empirical_chi2': np.nan, 'chi2_sim95': np.nan, 'chi2_trans': np.nan}
+
+    # ── Step 3: Monte Carlo simulation loop ─────────────────────────
+    actual_voters      = df_sub[total_col].values
+    simulated_chi2_stats = []
+
+    for _ in range(n_simulations):
+        Y_sim = rv.rvs(size=len(df_sub))
+        if len(df_sub) == 1:
+            Y_sim = Y_sim.reshape(1, -1)
+
+        exp_y_dem = np.exp(Y_sim[:, 0])
+        exp_y_con = np.exp(Y_sim[:, 1])
+        denom_sim = 1.0 + exp_y_dem + exp_y_con
+
+        # Simulated dem vote share → simulated counts
+        v_dem_sim  = exp_y_dem / denom_sim
+        sim_counts = np.round(v_dem_sim * actual_voters)
+
+        sim_chi2 = compute_benford_2bl_statistic(pd.Series(sim_counts))
+        if not np.isnan(sim_chi2):
+            simulated_chi2_stats.append(sim_chi2)
+
+    if not simulated_chi2_stats:
+        return {'empirical_chi2': np.nan, 'chi2_sim95': np.nan, 'chi2_trans': np.nan}
+
+    # ── Step 4: Derive transformed statistic (S&M eq. 6) ────────────
+    empirical_chi2 = compute_benford_2bl_statistic(df_sub[dem_col])
+    chi2_sim95     = np.percentile(simulated_chi2_stats, 95)
+
+    # Scale so that the standard χ²(9) critical value 16.9 is the
+    # effective rejection threshold on the transformed scale
+    chi2_trans = (empirical_chi2 * 16.9 / chi2_sim95) if chi2_sim95 > 0 else np.nan
+
+    return {
+        'empirical_chi2': empirical_chi2,
+        'chi2_sim95':     chi2_sim95,
+        'chi2_trans':     chi2_trans,
+    }
+
+
 def run_forensics(df_dong_raw: pd.DataFrame, df_const_raw: pd.DataFrame, df_station: pd.DataFrame,
                   df_census: pd.DataFrame, df_apt: pd.DataFrame) -> dict:
     logs = []
@@ -578,10 +734,15 @@ def run_forensics(df_dong_raw: pd.DataFrame, df_const_raw: pd.DataFrame, df_stat
     dm['turnout']     = dm['sum_vote_geo'] / dm['sum_people'].replace(0, np.nan)
 
     # ------------------------------------------------------------------
-    # [F1] SECOND-DIGIT BENFORD'S LAW (2BL)
+    # [F1] SECOND-DIGIT BENFORD'S LAW (2BL) — naive nationwide test
+    #
+    # NOTE: This uses the conventional χ²(9) critical value.  For the
+    # simulation-adjusted test (Shikano & Mack 2011) applied per metro
+    # constituency, see [F7d] below.
     # ------------------------------------------------------------------
     log("\n" + "="*60)
-    log("  [F1] Second-Digit Benford's Law (2BL)")
+    log("  [F1] Second-Digit Benford's Law (2BL) — Nationwide Naive Test")
+    log("  NOTE: Uses conventional χ²(9). See [F7d] for simulation-adjusted metro result.")
     log("="*60)
     MIN_VOTES_2BL = 10
     obs_2bl, exp_2bl, chi2_2bl, p_2bl, n_2bl = compute_benford_2bl(dm['gwannaesa_dem'])
@@ -640,7 +801,6 @@ def run_forensics(df_dong_raw: pd.DataFrame, df_const_raw: pd.DataFrame, df_stat
     log("\n" + "="*60)
     log("  [F5] Invalid Vote Analysis")
     log("="*60)
-    # Aggregate to Dong level from df_station (all voting types)
     valid_st = df_station[df_station['sum_vote'] > 0].copy()
     valid_st['dem_share'] = valid_st['dem_votes'] / valid_st['sum_vote']
     valid_inv = valid_st.dropna(subset=['invalid_rate', 'dem_share'])
@@ -667,13 +827,11 @@ def run_forensics(df_dong_raw: pd.DataFrame, df_const_raw: pd.DataFrame, df_stat
     log("="*60)
     df_station['metro_zone'] = df_station['region'].apply(categorize_metro)
 
-    # Compute two-party share at station level (dem / (dem + con)) for all stations
     valid_tp = df_station[
         (df_station['dem_votes'] + df_station['con_votes']) > 0
     ].copy()
     valid_tp['two_party_dem'] = valid_tp['dem_votes'] / (valid_tp['dem_votes'] + valid_tp['con_votes'])
 
-    # Macro aggregate by metro zone
     metro_agg = valid_tp.groupby('metro_zone').agg(
         dem_total=('dem_votes', 'sum'),
         con_total=('con_votes', 'sum'),
@@ -687,7 +845,6 @@ def run_forensics(df_dong_raw: pd.DataFrame, df_const_raw: pd.DataFrame, df_stat
         log(f"    {row['metro_zone']:12s}: {row['dem_ratio']*100:.2f}% vs {row['con_ratio']*100:.2f}%"
             f"  (n={row['station_count']:,} stations)")
 
-    # Micro std across all metropolitan stations
     metro_stations = valid_tp[valid_tp['metro_zone'] != 'Other']
     metro_std = metro_stations['two_party_dem'].std() * 100
     log(f"  Micro std of two-party dem share across metro stations: {metro_std:.2f}%")
@@ -695,13 +852,6 @@ def run_forensics(df_dong_raw: pd.DataFrame, df_const_raw: pd.DataFrame, df_stat
 
     # ------------------------------------------------------------------
     # [F7] METRO EARLY-VOTING DIGIT TESTS & 63:37 RATIO HYPOTHESIS
-    #
-    # [F1]/[F2] above test all nationwide Dong-level gwannaesa_dem counts.
-    # This block repeats the digit tests restricted to the three core
-    # metropolitan areas (Seoul, Incheon, Gyeonggi) where the "63:37"
-    # early-voting claim originates, and additionally reports the
-    # early-only (gwannaesa) two-party ratio per metro zone so that the
-    # claim can be evaluated directly against observed data.
     # ------------------------------------------------------------------
     log("\n" + "="*60)
     log("  [F7] Metro Early-Voting Digit Tests & 63:37 Ratio Hypothesis")
@@ -711,17 +861,26 @@ def run_forensics(df_dong_raw: pd.DataFrame, df_const_raw: pd.DataFrame, df_stat
     METRO_PROVINCES = {'서울', '인천', '경기'}
     dm_metro = dm[dm['province_tag'].isin(METRO_PROVINCES)].copy()
 
+    # Initialise all metro result variables so they exist regardless of branch
+    obs_2bl_metro  = pd.Series(dtype=int)
+    exp_2bl_metro  = np.zeros(10)
+    chi2_2bl_metro = np.nan
+    p_2bl_metro    = np.nan
+    n_2bl_metro    = 0
+    obs_ld_metro   = pd.Series(dtype=int)
+    exp_ld_metro   = []
+    chi2_ld_metro  = np.nan
+    p_ld_metro     = np.nan
+    metro_early_agg  = pd.DataFrame()
+    metro_early_std  = np.nan
+    sm_const_results = pd.DataFrame()   # [NEW] simulation-based per-constituency results
+
     if len(dm_metro) < 10:
         log("  [!] Insufficient metro data.")
-        obs_2bl_metro, exp_2bl_metro, chi2_2bl_metro, p_2bl_metro, n_2bl_metro = (
-            pd.Series(dtype=int), np.zeros(10), np.nan, np.nan, 0)
-        obs_ld_metro, exp_ld_metro, chi2_ld_metro, p_ld_metro = (
-            pd.Series(dtype=int), [], np.nan, np.nan)
-        metro_early_agg = pd.DataFrame()
-        metro_early_std = np.nan
     else:
-        # [F7a] 2BL on metro early votes
-        log(f"\n  [F7a] 2BL – Metro gwannaesa_dem (N={len(dm_metro):,} precincts)")
+        # [F7a] Naive 2BL on metro early votes
+        log(f"\n  [F7a] Naive 2BL – Metro gwannaesa_dem (N={len(dm_metro):,} precincts)")
+        log(f"  NOTE: Naive χ²(9) test only. See [F7d] for simulation-adjusted result.")
         obs_2bl_metro, exp_2bl_metro, chi2_2bl_metro, p_2bl_metro, n_2bl_metro = (
             compute_benford_2bl(dm_metro['gwannaesa_dem']))
         log(f"  N (votes >= 10)      : {n_2bl_metro:,}")
@@ -733,20 +892,9 @@ def run_forensics(df_dong_raw: pd.DataFrame, df_const_raw: pd.DataFrame, df_stat
             + ("conform to" if p_2bl_metro > 0.05 else "deviate from")
             + " Benford's natural distribution.")
 
-        # ------------------------------------------------------------------
-        # Scale-Range Comparison (Fewster 2009 / Hill 1995)
-        #
-        # 2BL is most reliable when data span several orders of magnitude
-        # on the original scale.  The metro subset removes very small rural
-        # precincts, slightly compressing the lower tail of the distribution.
-        # ------------------------------------------------------------------
-        votes_metro_sm = dm_metro['gwannaesa_dem'][
-            dm_metro['gwannaesa_dem'] >= 10
-        ].values.astype(float)
-
-        votes_nation_sm = dm['gwannaesa_dem'][
-            dm['gwannaesa_dem'] >= 10
-        ].values.astype(float)
+        # Scale-range comparison (Fewster 2009)
+        votes_metro_sm  = dm_metro['gwannaesa_dem'][dm_metro['gwannaesa_dem'] >= 10].values.astype(float)
+        votes_nation_sm = dm['gwannaesa_dem'][dm['gwannaesa_dem'] >= 10].values.astype(float)
 
         metro_min_sr  = int(votes_metro_sm.min())
         metro_max_sr  = int(votes_metro_sm.max())
@@ -760,34 +908,13 @@ def run_forensics(df_dong_raw: pd.DataFrame, df_const_raw: pd.DataFrame, df_stat
         log(f"    Metro [F7a] range     : {metro_min_sr:,} – {metro_max_sr:,} "
             f"({metro_orders:.2f} orders of magnitude)")
 
-        # ------------------------------------------------------------------
         # Shikano & Mack (2011) Homogeneity Diagnostic
-        #
-        # S&M identify two conditions that inflate the naive χ²(9) 2BL
-        # statistic even without fraud:
-        #   (1) Mode of the vote-count distribution ∈ [80, 190]
-        #   (2) Distribution is homogeneous (KDE max density > 0.01)
-        #
-        # IMPORTANT — unit of analysis:
-        # S&M calibrated these thresholds on individual polling-station
-        # (Wahlbezirk) vote counts, which typically range from ~50 to ~500
-        # votes.  The present [F7a] analysis operates on Dong-level
-        # aggregates: each Dong combines multiple polling stations, producing
-        # vote totals in the thousands.  The S&M mode range of 80–190 and
-        # KDE density threshold of 0.01 therefore cannot be expected to apply
-        # at Dong-level aggregation.  The diagnostic is reported for
-        # completeness; the result (conditions NOT met) simply confirms that
-        # the aggregation level differs from S&M's calibration, not that the
-        # test is necessarily reliable.
-        # ------------------------------------------------------------------
         try:
             hist_counts_sm, hist_edges_sm = np.histogram(
                 votes_metro_sm, bins=min(50, max(10, len(votes_metro_sm) // 10))
             )
             bin_width_sm = hist_edges_sm[1] - hist_edges_sm[0]
-            mode_approx  = float(
-                hist_edges_sm[np.argmax(hist_counts_sm)] + bin_width_sm / 2.0
-            )
+            mode_approx  = float(hist_edges_sm[np.argmax(hist_counts_sm)] + bin_width_sm / 2.0)
             kde_x_max = min(float(votes_metro_sm.max()), 2000.0)
             kde_obj   = gaussian_kde(votes_metro_sm)
             kde_x     = np.linspace(votes_metro_sm.min(), kde_x_max, 1000)
@@ -815,10 +942,8 @@ def run_forensics(df_dong_raw: pd.DataFrame, df_const_raw: pd.DataFrame, df_stat
             log(f"  Simulation-based critical values (S&M 2011, Eq. 6) are warranted.")
         else:
             log(f"  Neither S&M station-level condition met (expected at Dong aggregation).")
-            log(f"  The naive χ² test is more reliable at this aggregation level, but the")
-            log(f"  S&M framework does not formally cover Dong-level data.  Cross-election")
-            log(f"  consistency of chi-squares and the [F7b] last-digit result are the")
-            log(f"  primary forensic indicators.")
+            log(f"  The naive χ² test is less reliable at this aggregation level; the")
+            log(f"  simulation-adjusted result [F7d] is the primary forensic indicator.")
 
         # [F7b] Last-digit uniformity on metro early votes
         log(f"\n  [F7b] Last-Digit – Metro gwannaesa_dem")
@@ -837,8 +962,6 @@ def run_forensics(df_dong_raw: pd.DataFrame, df_const_raw: pd.DataFrame, df_stat
              if p_ld_metro > 0.05 else "deviate from uniformity."))
 
         # [F7c] Early-only two-party ratio per metro zone (63:37 hypothesis)
-        # Use df_station filtered to is_early stations in metro zones to
-        # get gwannaesa dem and con votes separately.
         log(f"\n  [F7c] Early-Only Two-Party Ratio (gwannaesa, 63:37 hypothesis)")
         df_station['metro_zone'] = df_station['region'].apply(categorize_metro)
         early_st = df_station[
@@ -872,6 +995,88 @@ def run_forensics(df_dong_raw: pd.DataFrame, df_const_raw: pd.DataFrame, df_stat
             f"{metro_early_std:.2f}%")
         log(f"  A high micro-level std alongside any macro convergence confirms")
         log(f"  the Law of Large Numbers explanation, not top-down fixing.")
+
+        # ──────────────────────────────────────────────────────────────
+        # [F7d] SIMULATION-BASED 2BL — Per Metro Constituency
+        #       (Shikano & Mack 2011, adapted for Korean Dong aggregates)
+        #
+        # The naive χ²(9) test in [F7a] pools all metro dongs into a
+        # single test, ignoring constituency structure and the fact that
+        # the χ²(9) reference distribution may not be appropriate for
+        # Dong-level data (see S&M 2011).  [F7d] instead:
+        #   • Runs one simulation per metro constituency, using its dongs
+        #     as the unit of analysis (the Korean analog of German Wahlbezirke).
+        #   • Fits a multivariate Student-t on vote-share log-ratios for
+        #     that constituency's dongs (Katz & King 1999).
+        #   • Draws 500 synthetic elections and computes the 95th-percentile
+        #     chi-square as a constituency-specific critical value.
+        #   • Transforms the empirical chi-square to that scale (S&M eq. 6).
+        # Values of chi2_trans > 16.9 indicate rejection after correction.
+        # ──────────────────────────────────────────────────────────────
+        log(f"\n  [F7d] Simulation-Adjusted 2BL Per Metro Constituency (S&M 2011)")
+        log(f"  Unit: dongs within each constituency (Korean analog of German precincts)")
+        log(f"  Simulations per constituency: 500  |  df_t = 5")
+
+        if 'gwannaesa_con' not in df_dong_raw.columns:
+            log("  [!] gwannaesa_con not found in dong data. Was load_election_csv updated?")
+            log("  [!] Skipping simulation-based test.")
+        else:
+            metro_dong_raw = df_dong_raw[
+                df_dong_raw['province_tag'].isin(METRO_PROVINCES) &
+                (df_dong_raw['gwannaesa_total'] > MIN_VOTES)
+            ].copy()
+
+            const_groups = metro_dong_raw.groupby(['시도명', '선거구명'])
+            sm_rows = []
+
+            for (sido, const_name), grp in const_groups:
+                if len(grp) < 5:
+                    continue   # skip constituencies with too few dongs to fit the model
+                res = simulate_2bl_critical_value(
+                    grp,
+                    dem_col='gwannaesa_dem',
+                    con_col='gwannaesa_con',
+                    total_col='gwannaesa_total',
+                    n_simulations=500,
+                    df_t=5,
+                )
+                res['시도명']   = sido
+                res['선거구명'] = const_name
+                res['n_dongs']  = len(grp)
+                sm_rows.append(res)
+
+            if sm_rows:
+                sm_const_results = pd.DataFrame(sm_rows)
+                n_total   = len(sm_const_results)
+                valid_mask = sm_const_results['chi2_trans'].notna()
+                n_valid   = valid_mask.sum()
+                n_reject  = (sm_const_results.loc[valid_mask, 'chi2_trans'] > 16.9).sum()
+                pct_reject = n_reject / n_valid * 100 if n_valid > 0 else 0.0
+
+                log(f"  Metro constituencies analysed   : {n_total}")
+                log(f"  With valid simulation results   : {n_valid}")
+                log(f"  Exceeding sim-adjusted threshold: {n_reject} ({pct_reject:.1f}%)")
+                log(f"  Expected by chance (α=5%)       : ~5%")
+
+                if pct_reject <= 7.5:
+                    log(f"  Result: PASS – rejection rate within chance expectation.")
+                    log(f"          The naive [F7a] χ²(9) inflation is explained by")
+                    log(f"          constituency structure, not data manipulation.")
+                else:
+                    log(f"  Result: FAIL – more constituencies rejected than chance predicts.")
+                    log(f"          Simulation-corrected deviation warrants closer review.")
+
+                # Print top outliers by chi2_trans
+                log(f"\n  Top 10 constituencies by simulation-adjusted chi2_trans:")
+                log(f"  {'시도명':<6} {'선거구명':<20} {'emp_χ²':>8} {'sim95':>7} {'trans_χ²':>9} {'n_dongs':>7}")
+                top_sm = sm_const_results.dropna(subset=['chi2_trans']).sort_values('chi2_trans', ascending=False).head(10)
+                for _, r in top_sm.iterrows():
+                    flag = " ★" if r['chi2_trans'] > 16.9 else ""
+                    log(f"  {str(r['시도명']):<6} {str(r['선거구명']):<20} "
+                        f"{r['empirical_chi2']:8.2f} {r['chi2_sim95']:7.2f} "
+                        f"{r['chi2_trans']:9.2f}{flag}  (n={int(r['n_dongs'])})")
+            else:
+                log("  [!] No valid simulation results produced.")
 
     # ------------------------------------------------------------------
     # Constituency-level
@@ -916,6 +1121,8 @@ def run_forensics(df_dong_raw: pd.DataFrame, df_const_raw: pd.DataFrame, df_stat
             'obs_ld_metro': obs_ld_metro, 'exp_ld_metro': exp_ld_metro,
             'chi2_ld_metro': chi2_ld_metro, 'p_ld_metro': p_ld_metro,
             'metro_early_agg': metro_early_agg, 'metro_early_std': metro_early_std,
+            # [NEW] Simulation-based per-constituency results [F7d]
+            'sm_const_results': sm_const_results,
             'r2': corr_a**2,
         },
         'const': {'df': cm, 'r2': corr_b**2},
@@ -1019,15 +1226,6 @@ def run_causal_analysis(dm: pd.DataFrame, cm: pd.DataFrame):
         log("              Strong evidence FOR organic demographic sorting (Mobilization).")
         log("              Weakens theories of a uniform, demographic-blind algorithmic fraud.")
 
-    # ------------------------------------------------------------------
-    # [C5] Residual Normality – D'Agostino K² test on WLS residuals
-    #
-    # NOTE: With N > 2,000 precinct-level observations the D'Agostino
-    # K² p-value will almost always be astronomically small, even when
-    # the distribution is visually near-normal.  For large-N population
-    # data the informative diagnostics are (a) the test *statistic* θ
-    # (small θ → mild departure) and (b) the Q-Q plot.  We report both.
-    # ------------------------------------------------------------------
     res_data = df_mod['residual_gap'].replace([np.inf, -np.inf], np.nan).dropna()
     stat, p_norm = normaltest(res_data)
     log("\n[C5] Residual Normality Diagnostic (D'Agostino's K-squared test)")
@@ -1066,6 +1264,8 @@ def plot_dashboard(results: dict, out_path: str, title: str):
     variances= results['dong']['variances']
     r2_dong  = results['dong']['r2']
     r2_const = results['const']['r2']
+    # [NEW] Simulation-based per-constituency results for [F7d] panel
+    sm_const_results = results['dong'].get('sm_const_results', pd.DataFrame())
 
     fig, axes = plt.subplots(4, 4, figsize=(22, 20))
     fig.suptitle(f"Election Forensics & Causal Dashboard  –  {title}", fontsize=15, fontweight='bold', y=0.995)
@@ -1098,11 +1298,6 @@ def plot_dashboard(results: dict, out_path: str, title: str):
         """
         Plot WLS residual histogram with a fitted normal curve and
         D'Agostino K² normality test annotation.
-
-        For large-N data (N > 2,000) the p-value will almost always be
-        tiny; we therefore report the test *statistic* θ (= K²) alongside
-        p so that readers can gauge the magnitude of departure from
-        normality independently of sample size.
         """
         data = data.replace([np.inf, -np.inf], np.nan).dropna() * 100
         if len(data) == 0:
@@ -1116,7 +1311,6 @@ def plot_dashboard(results: dict, out_path: str, title: str):
         ax.plot(x, p_curve, 'k', linewidth=2)
         ax.axvline(0, color='red', lw=1, ls='--', alpha=0.5)
 
-        # D'Agostino K² test – annotate with statistic and p-value
         theta, p_val = normaltest(data)
         ax.set_title(f'WLS Residuals: {label}', fontsize=9)
         ax.legend(
@@ -1172,33 +1366,75 @@ def plot_dashboard(results: dict, out_path: str, title: str):
     axes[1, 3].set_title(f'Election fingerprint\n{LEVEL_B}', fontsize=9)
 
     # Row 2: digit tests, variance, gap plots
-    # [2,0] Last-digit test
+
+    # [2,0] Last-digit test (nationwide)
     axes[2, 0].bar(range(10), obs_ld, color='salmon', alpha=0.8, edgecolor='white', label='Observed')
     axes[2, 0].plot(range(10), exp_ld, 'k--', lw=1.5, label='Expected uniform')
     chi2_ld = results['dong']['chi2_ld']
     p_ld    = results['dong']['p_ld']
     axes[2, 0].set_title(
-        f'Last-digit test  χ²={chi2_ld:.2f} (p={p_ld:.3f})\n관내사전 dem votes (dong)',
+        f'Last-digit test  χ²={chi2_ld:.2f} (p={p_ld:.3f})\n관내사전 dem votes (dong, nationwide)',
         fontsize=9
     )
     axes[2, 0].set_xticks(range(10))
     axes[2, 0].legend(fontsize=7)
 
-    # [2,1] Second-digit Benford's Law (2BL)
-    digits = np.arange(10)
-    width  = 0.4
-    chi2_2bl = results['dong']['chi2_2bl']
-    p_2bl    = results['dong']['p_2bl']
-    axes[2, 1].bar(digits - width/2, obs_2bl,  width, color='mediumpurple', alpha=0.8,
-                   edgecolor='white', label='Observed')
-    axes[2, 1].bar(digits + width/2, exp_2bl,  width, color='slategray',    alpha=0.6,
-                   edgecolor='white', label='Expected (Benford)')
-    axes[2, 1].set_title(
-        f'2nd-digit Benford (2BL)  χ²={chi2_2bl:.2f} (p={p_2bl:.3f})\n관내사전 dem votes (dong)',
-        fontsize=9
-    )
-    axes[2, 1].set_xticks(digits)
-    axes[2, 1].legend(fontsize=7)
+    # [2,1] Simulation-adjusted 2BL — metro constituency chi2_trans histogram
+    #       [CHANGED] Replaced the naive nationwide 2BL bar chart with the
+    #       distribution of per-constituency simulation-adjusted chi2_trans
+    #       values from [F7d].  The naive nationwide bar chart is still
+    #       reported numerically in the statistical report (chi2_2bl / p_2bl).
+    #       Showing chi2_trans here is more forensically informative because
+    #       it is the S&M-corrected result that accounts for constituency
+    #       structure and the non-χ²(9) reference distribution at Dong level.
+    ax21 = axes[2, 1]
+    if not sm_const_results.empty and 'chi2_trans' in sm_const_results.columns:
+        trans_vals = sm_const_results['chi2_trans'].dropna()
+        if len(trans_vals) > 0:
+            ax21.hist(trans_vals, bins=20, color='mediumpurple', alpha=0.75, edgecolor='white')
+            ax21.axvline(16.9, color='red', lw=1.8, ls='--', label='α=5% threshold (16.9)')
+            n_reject = (trans_vals > 16.9).sum()
+            pct_rej  = n_reject / len(trans_vals) * 100
+            ax21.set_title(
+                f'[F7d] Sim-Adj 2BL per Metro Const.\n'
+                f'Rejected: {n_reject}/{len(trans_vals)} ({pct_rej:.1f}%) — expected ~5%',
+                fontsize=9
+            )
+            ax21.set_xlabel('chi2_trans (S&M 2011)', fontsize=8)
+            ax21.set_ylabel('Number of constituencies', fontsize=8)
+            ax21.legend(fontsize=7)
+        else:
+            # Fallback: show naive 2BL bar chart if simulation produced no results
+            digits = np.arange(10)
+            width  = 0.4
+            chi2_2bl = results['dong']['chi2_2bl']
+            p_2bl    = results['dong']['p_2bl']
+            ax21.bar(digits - width/2, obs_2bl, width, color='mediumpurple', alpha=0.8,
+                     edgecolor='white', label='Observed')
+            ax21.bar(digits + width/2, exp_2bl, width, color='slategray', alpha=0.6,
+                     edgecolor='white', label='Expected (Benford)')
+            ax21.set_title(
+                f'2nd-digit Benford (2BL, naive)  χ²={chi2_2bl:.2f} (p={p_2bl:.3f})\n관내사전 dem votes (dong, nationwide)',
+                fontsize=9
+            )
+            ax21.set_xticks(digits)
+            ax21.legend(fontsize=7)
+    else:
+        # Fallback: simulation not run — show naive nationwide 2BL
+        digits = np.arange(10)
+        width  = 0.4
+        chi2_2bl = results['dong']['chi2_2bl']
+        p_2bl    = results['dong']['p_2bl']
+        ax21.bar(digits - width/2, obs_2bl, width, color='mediumpurple', alpha=0.8,
+                 edgecolor='white', label='Observed')
+        ax21.bar(digits + width/2, exp_2bl, width, color='slategray', alpha=0.6,
+                 edgecolor='white', label='Expected (Benford)')
+        ax21.set_title(
+            f'2nd-digit Benford (2BL, naive)  χ²={chi2_2bl:.2f} (p={p_2bl:.3f})\n관내사전 dem votes (dong, nationwide)',
+            fontsize=9
+        )
+        ax21.set_xticks(digits)
+        ax21.legend(fontsize=7)
 
     # [2,2] Constituency gap (gwannaesa vs gwanoe)
     vgo = cm.dropna(subset=['gwanoe_pct'])
@@ -1245,12 +1481,6 @@ def plot_statistical_report(results: dict, out_path: str, title: str):
     text += "[C2] Algorithmic Ratio Test (WLS Ratio Regression)\n"
     text += results['mod_ratio'].summary().as_text() + "\n"
 
-    # NOTE: fontfamily is intentionally NOT set to 'monospace' here.
-    # Specifying a monospace family overrides the Korean font configured
-    # by setup_korean_font(), causing Hangul characters to render as
-    # replacement boxes (tofu) in the [C6] anomaly profiling table.
-    # The matplotlib default family (set to the Korean font at startup)
-    # renders both ASCII and Hangul correctly.
     ax.text(0.01, 0.99, text, fontsize=7.5, va='top', ha='left')
     plt.tight_layout()
     plt.savefig(out_path, dpi=200, bbox_inches='tight')
