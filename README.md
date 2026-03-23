@@ -7,3 +7,5 @@ The general elction results (csv files) are from official Korean government data
 (The presidental election results are from https://www.data.go.kr/data/15025528/fileData.do)
 
 The actual monthly housing price data are from official Korean government data, https://www.data.go.kr/data/3050988/fileData.do, which directs to https://rt.molit.go.kr/pt/xls/xls.do?mobileAt=
+
+(Note: Timothy Kim is a pen name. The real identity of the author is to be revealed when the manuscript is published)
