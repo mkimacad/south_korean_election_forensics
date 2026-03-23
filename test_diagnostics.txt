@@ -46,7 +46,7 @@
 ============================================================
   [F3] Vote-Share Variance (Inter-Neighbourhood Dispersion)
 ============================================================
-  Mean within-city std of dem vote share: 5.85%
+  Mean within-city std of dem vote share: 5.47%
 
 ============================================================
   [F5] Invalid Vote Analysis
@@ -162,9 +162,17 @@
 ============================================================
   [F11] Sebastopol Test (Turnout–Share Correlation by Constituency)
 ============================================================
-  [!] FLAG: 1 constituencies with Turnout–Share r > 0.70
+  [!] FLAG: 9 constituencies with Turnout–Share r > 0.70
       This is a mechanical signature of localised ballot stuffing.
-      - 세종특별자치         : r = 0.7950  (n=19 Dongs)
+      - Seoul 서대문구갑               : r = 0.8875  (n=7 Dongs)
+      - Sejong 세종특별자치시을            : r = 0.8818  (n=10 Dongs)
+      - Busan 해운대구을               : r = 0.8309  (n=8 Dongs)
+      - Gyeonggi 파주시갑                : r = 0.8099  (n=7 Dongs)
+      - Ulsan 남구갑                 : r = 0.7561  (n=8 Dongs)
+      - Sejong 세종특별자치시갑            : r = 0.7487  (n=9 Dongs)
+      - Gyeonggi 수원시무                : r = 0.7302  (n=10 Dongs)
+      - Gyeonggi 용인시을                : r = 0.7137  (n=10 Dongs)
+      - Gyeonggi 수원시갑                : r = 0.7107  (n=9 Dongs)
 
 ============================================================
   [F12] Absentee (Out-of-Precinct Early) Shift Analysis
@@ -243,7 +251,7 @@ Dep. Variable:                    gap   R-squared:                       0.490
 Model:                            WLS   Adj. R-squared:                  0.484
 Method:                 Least Squares   F-statistic:                     89.67
 Date:                Mon, 23 Mar 2026   Prob (F-statistic):               0.00
-Time:                        09:47:55   Log-Likelihood:                 6915.4
+Time:                        22:20:30   Log-Likelihood:                 6915.4
 No. Observations:                3479   AIC:                        -1.375e+04
 Df Residuals:                    3437   BIC:                        -1.349e+04
 Df Model:                          41                                         
@@ -315,7 +323,7 @@ Dep. Variable:              early_pct   R-squared:                       0.961
 Model:                            WLS   Adj. R-squared:                  0.961
 Method:                 Least Squares   F-statistic:                     1576.
 Date:                Mon, 23 Mar 2026   Prob (F-statistic):               0.00
-Time:                        09:47:56   Log-Likelihood:                 6922.6
+Time:                        22:20:30   Log-Likelihood:                 6922.6
 No. Observations:                3479   AIC:                        -1.376e+04
 Df Residuals:                    3436   BIC:                        -1.349e+04
 Df Model:                          42                                         
@@ -387,7 +395,7 @@ Dep. Variable:                    gap   R-squared:                       0.803
 Model:                            WLS   Adj. R-squared:                  0.769
 Method:                 Least Squares   F-statistic:                     28.68
 Date:                Mon, 23 Mar 2026   Prob (F-statistic):           1.03e-64
-Time:                        09:47:56   Log-Likelihood:                 739.02
+Time:                        22:20:30   Log-Likelihood:                 739.02
 No. Observations:                 253   AIC:                            -1400.
 Df Residuals:                     214   BIC:                            -1262.
 Df Model:                          38                                         
@@ -536,7 +544,7 @@ Matched on: 21 Age-Gender Cohorts, Urbanization, Wealth, Region, Military
 ============================================================
   [F3] Vote-Share Variance (Inter-Neighbourhood Dispersion)
 ============================================================
-  Mean within-city std of dem vote share: 5.25%
+  Mean within-city std of dem vote share: 4.88%
 
 ============================================================
   [F5] Invalid Vote Analysis
@@ -654,9 +662,13 @@ Matched on: 21 Age-Gender Cohorts, Urbanization, Wealth, Region, Military
 ============================================================
   [F11] Sebastopol Test (Turnout–Share Correlation by Constituency)
 ============================================================
-  [!] FLAG: 1 constituencies with Turnout–Share r > 0.70
+  [!] FLAG: 5 constituencies with Turnout–Share r > 0.70
       This is a mechanical signature of localised ballot stuffing.
-      - 세종특별자치         : r = 0.7261  (n=11 Dongs)
+      - Gyeonggi 용인시을                : r = 0.9027  (n=10 Dongs)
+      - Incheon 연수구갑                : r = 0.8705  (n=10 Dongs)
+      - Incheon 계양구갑                : r = 0.8448  (n=6 Dongs)
+      - Gyeonggi 부천시병                : r = 0.7483  (n=13 Dongs)
+      - Sejong 세종특별자치시을            : r = 0.7261  (n=11 Dongs)
 
 ============================================================
   [F12] Absentee (Out-of-Precinct Early) Shift Analysis
@@ -735,7 +747,7 @@ Dep. Variable:                    gap   R-squared:                       0.514
 Model:                            WLS   Adj. R-squared:                  0.507
 Method:                 Least Squares   F-statistic:                     95.83
 Date:                Mon, 23 Mar 2026   Prob (F-statistic):               0.00
-Time:                        09:48:10   Log-Likelihood:                 5922.7
+Time:                        22:22:33   Log-Likelihood:                 5922.7
 No. Observations:                2726   AIC:                        -1.176e+04
 Df Residuals:                    2684   BIC:                        -1.151e+04
 Df Model:                          41                                         
@@ -807,7 +819,7 @@ Dep. Variable:              early_pct   R-squared:                       0.968
 Model:                            WLS   Adj. R-squared:                  0.968
 Method:                 Least Squares   F-statistic:                     2350.
 Date:                Mon, 23 Mar 2026   Prob (F-statistic):               0.00
-Time:                        09:48:10   Log-Likelihood:                 5978.7
+Time:                        22:22:33   Log-Likelihood:                 5978.7
 No. Observations:                2726   AIC:                        -1.187e+04
 Df Residuals:                    2683   BIC:                        -1.162e+04
 Df Model:                          42                                         
@@ -879,7 +891,7 @@ Dep. Variable:                    gap   R-squared:                       0.884
 Model:                            WLS   Adj. R-squared:                  0.862
 Method:                 Least Squares   F-statistic:                     49.52
 Date:                Mon, 23 Mar 2026   Prob (F-statistic):           5.10e-84
-Time:                        09:48:10   Log-Likelihood:                 785.73
+Time:                        22:22:33   Log-Likelihood:                 785.73
 No. Observations:                 245   AIC:                            -1493.
 Df Residuals:                     206   BIC:                            -1357.
 Df Model:                          38                                         
@@ -1035,7 +1047,7 @@ Matched on: 21 Age-Gender Cohorts, Urbanization, Wealth, Region, Military
 ============================================================
   [F3] Vote-Share Variance (Inter-Neighbourhood Dispersion)
 ============================================================
-  Mean within-city std of dem vote share: 3.96%
+  Mean within-city std of dem vote share: 3.51%
 
 ============================================================
   [F5] Invalid Vote Analysis
@@ -1151,11 +1163,12 @@ Matched on: 21 Age-Gender Cohorts, Urbanization, Wealth, Region, Military
 ============================================================
   [F11] Sebastopol Test (Turnout–Share Correlation by Constituency)
 ============================================================
-  [!] FLAG: 3 constituencies with Turnout–Share r > 0.70
+  [!] FLAG: 4 constituencies with Turnout–Share r > 0.70
       This is a mechanical signature of localised ballot stuffing.
-      - 세종특별자치         : r = 0.8150  (n=22 Dongs)
-      - 흥덕             : r = 0.7484  (n=11 Dongs)
-      - 마산합포           : r = 0.7233  (n=15 Dongs)
+      - Sejong 세종특별자치시             : r = 0.8150  (n=22 Dongs)
+      - Daegu 서구                  : r = 0.7795  (n=17 Dongs)
+      - Chungbuk 청주시흥덕구              : r = 0.7484  (n=11 Dongs)
+      - Gyeongnam 창원시마산합포구            : r = 0.7233  (n=15 Dongs)
 
 ============================================================
   [F12] Absentee (Out-of-Precinct Early) Shift Analysis
@@ -1234,7 +1247,7 @@ Dep. Variable:                    gap   R-squared:                       0.548
 Model:                            WLS   Adj. R-squared:                  0.542
 Method:                 Least Squares   F-statistic:                     95.41
 Date:                Mon, 23 Mar 2026   Prob (F-statistic):               0.00
-Time:                        09:54:20   Log-Likelihood:                 7797.2
+Time:                        22:31:39   Log-Likelihood:                 7797.2
 No. Observations:                3509   AIC:                        -1.551e+04
 Df Residuals:                    3467   BIC:                        -1.525e+04
 Df Model:                          41                                         
@@ -1306,7 +1319,7 @@ Dep. Variable:              early_pct   R-squared:                       0.983
 Model:                            WLS   Adj. R-squared:                  0.982
 Method:                 Least Squares   F-statistic:                     6145.
 Date:                Mon, 23 Mar 2026   Prob (F-statistic):               0.00
-Time:                        09:54:20   Log-Likelihood:                 7847.6
+Time:                        22:31:39   Log-Likelihood:                 7847.6
 No. Observations:                3509   AIC:                        -1.561e+04
 Df Residuals:                    3466   BIC:                        -1.534e+04
 Df Model:                          42                                         
@@ -1378,7 +1391,7 @@ Dep. Variable:                    gap   R-squared:                       0.911
 Model:                            WLS   Adj. R-squared:                  0.895
 Method:                 Least Squares   F-statistic:                     56.78
 Date:                Mon, 23 Mar 2026   Prob (F-statistic):           5.69e-91
-Time:                        09:54:20   Log-Likelihood:                 810.34
+Time:                        22:31:39   Log-Likelihood:                 810.34
 No. Observations:                 250   AIC:                            -1543.
 Df Residuals:                     211   BIC:                            -1405.
 Df Model:                          38                                         
@@ -1528,7 +1541,7 @@ Matched on: 21 Age-Gender Cohorts, Urbanization, Wealth, Region, Military
 ============================================================
   [F3] Vote-Share Variance (Inter-Neighbourhood Dispersion)
 ============================================================
-  Mean within-city std of dem vote share: 4.00%
+  Mean within-city std of dem vote share: 3.58%
 
 ============================================================
   [F5] Invalid Vote Analysis
@@ -1644,14 +1657,17 @@ Matched on: 21 Age-Gender Cohorts, Urbanization, Wealth, Region, Military
 ============================================================
   [F11] Sebastopol Test (Turnout–Share Correlation by Constituency)
 ============================================================
-  [!] FLAG: 6 constituencies with Turnout–Share r > 0.70
+  [!] FLAG: 9 constituencies with Turnout–Share r > 0.70
       This is a mechanical signature of localised ballot stuffing.
-      - 세종특별자치         : r = 0.8759  (n=24 Dongs)
-      - 흥덕             : r = 0.8191  (n=11 Dongs)
-      - 양양             : r = 0.8152  (n=6 Dongs)
-      - 제주             : r = 0.7905  (n=26 Dongs)
-      - 마산합포           : r = 0.7684  (n=15 Dongs)
-      - 달서             : r = 0.7216  (n=23 Dongs)
+      - Daegu 서구                  : r = 0.9042  (n=17 Dongs)
+      - Sejong 세종특별자치시             : r = 0.8759  (n=24 Dongs)
+      - Chungbuk 청주시흥덕구              : r = 0.8191  (n=11 Dongs)
+      - Gangwon 양양군                 : r = 0.8152  (n=6 Dongs)
+      - Busan 서구                  : r = 0.7996  (n=13 Dongs)
+      - Jeju 제주시                 : r = 0.7905  (n=26 Dongs)
+      - Gyeongnam 창원시마산합포구            : r = 0.7684  (n=15 Dongs)
+      - Incheon 동구                  : r = 0.7442  (n=11 Dongs)
+      - Daegu 달서구                 : r = 0.7216  (n=23 Dongs)
 
 ============================================================
   [F12] Absentee (Out-of-Precinct Early) Shift Analysis
@@ -1731,7 +1747,7 @@ Dep. Variable:                    gap   R-squared:                       0.733
 Model:                            WLS   Adj. R-squared:                  0.730
 Method:                 Least Squares   F-statistic:                     235.7
 Date:                Mon, 23 Mar 2026   Prob (F-statistic):               0.00
-Time:                        09:53:21   Log-Likelihood:                 6902.5
+Time:                        22:31:03   Log-Likelihood:                 6902.5
 No. Observations:                3553   AIC:                        -1.372e+04
 Df Residuals:                    3511   BIC:                        -1.346e+04
 Df Model:                          41                                         
@@ -1803,7 +1819,7 @@ Dep. Variable:              early_pct   R-squared:                       0.961
 Model:                            WLS   Adj. R-squared:                  0.961
 Method:                 Least Squares   F-statistic:                     1798.
 Date:                Mon, 23 Mar 2026   Prob (F-statistic):               0.00
-Time:                        09:53:21   Log-Likelihood:                 7101.4
+Time:                        22:31:05   Log-Likelihood:                 7101.4
 No. Observations:                3553   AIC:                        -1.412e+04
 Df Residuals:                    3510   BIC:                        -1.385e+04
 Df Model:                          42                                         
@@ -1875,7 +1891,7 @@ Dep. Variable:                    gap   R-squared:                       0.945
 Model:                            WLS   Adj. R-squared:                  0.936
 Method:                 Least Squares   F-statistic:                     101.1
 Date:                Mon, 23 Mar 2026   Prob (F-statistic):          1.83e-116
-Time:                        09:53:21   Log-Likelihood:                 725.56
+Time:                        22:31:05   Log-Likelihood:                 725.56
 No. Observations:                 253   AIC:                            -1373.
 Df Residuals:                     214   BIC:                            -1235.
 Df Model:                          38                                         
