@@ -1,0 +1,226 @@
+
+
+============================================================
+  Korean Election Forensics — 21st Presidential Election (2025)
+============================================================
+
+--- [1/5] Loading Demographic Census Data (Age-Gender cohorts) ---
+    Loaded 3,895 census rows with 22 Age-Gender cohorts.
+
+--- [2/5] Loading Apartment Transaction Data (*21st_presidential_election_*_apt_prices.csv) ---
+    Calculated stable median prices for 3,444 unique Dongs.
+
+--- [3/5] Loading Election Result Data (21st_presidential_election_result.csv, type=presidential) ---
+    Presidential format detected: columns normalised.
+
+--- [4/5] Forensics Suite ---
+
+============================================================
+  [F1] Second-Digit Benford's Law (2BL) — Nationwide Naive Test
+  NOTE: Uses conventional χ²(9). See [F7d] for simulation-adjusted metro result.
+============================================================
+  N (votes >= 10)      : 3,553
+  Chi-Square Statistic : 8.5343
+  p-value              : 0.4813  (df=9)
+  Result: PASS
+
+  Observed vs Expected (digits 0–9):
+    digit 0: obs=  376, exp=  425.2
+    digit 1: obs=  403, exp=  404.7
+    digit 2: obs=  404, exp=  386.6
+    digit 3: obs=  389, exp=  370.7
+    digit 4: obs=  352, exp=  356.4
+    digit 5: obs=  360, exp=  343.5
+    digit 6: obs=  336, exp=  331.8
+    digit 7: obs=  326, exp=  321.0
+    digit 8: obs=  304, exp=  311.1
+    digit 9: obs=  303, exp=  302.0
+
+============================================================
+  [F2] Last-Digit Uniformity Test (Three-Series Comparative)
+============================================================
+  [in_precinct_early_dem  (early, DEM)]  N=3,553  χ²=11.09  p=0.2696  Cramér's V=0.0186  PASS
+  [in_precinct_early_con  (early, CON)]  N=3,552  χ²=10.49  p=0.3120  Cramér's V=0.0181  PASS
+  [same_day_dem   (sameday, DEM)]  N=3,553  χ²=5.00  p=0.8339  Cramér's V=0.0125  PASS
+
+  Binomial simulation null (using actual in_precinct_early_total & p_dem per dong):
+  Simulated chi²=6.83 (p=0.6550) vs Actual chi²=11.09 (p=0.2696)
+
+============================================================
+  [F3] Vote-Share Variance (Inter-Neighbourhood Dispersion)
+============================================================
+  Mean within-city std of dem vote share: 4.00%
+
+============================================================
+  [F5] Invalid Vote Analysis
+============================================================
+  N stations        : 17,849
+  Pearson r (invalid rate ↔ dem share): -0.0489  (p=0.0000)
+  Result: Near-zero — no weaponized invalid ballot signal.
+
+============================================================
+  [F6] Regional Aggregate Analysis (Metropolitan Two-Party Ratio)
+============================================================
+    Gyeonggi    : 55.97% vs 44.03%  (n=3,888 stations)
+    Incheon     : 55.47% vs 44.53%  (n=898 stations)
+    Seoul       : 50.49% vs 49.51%  (n=2,686 stations)
+  Micro std of two-party dem share across metro stations: 13.33%
+
+============================================================
+  [F7] Metro Early-Voting Digit Tests & 63:37 Ratio Hypothesis
+  (Seoul / Incheon / Gyeonggi – in-precinct early votes only)
+============================================================
+
+  [F7a] Naive 2BL – Metro in_precinct_early_dem (N=1,183 precincts)
+  NOTE: Naive χ²(9) test only. See [F7d] for simulation-adjusted result.
+  N (votes >= 10)      : 1,183
+  Chi-Square Statistic : 20.4027
+  p-value              : 0.0156  (df=9)
+  Result: FAIL
+
+  Scale-Range Comparison (Fewster 2009):
+    Nationwide [F1] range : 31 – 13,448 (2.64 orders of magnitude)
+    Metro [F7a] range     : 31 – 10,907 (2.55 orders of magnitude)
+
+  Shikano & Mack (2011) Homogeneity Diagnostic:
+  NOTE: S&M thresholds calibrated for station-level counts (~50–500 votes).
+  This analysis uses Dong-level aggregates (mode ~2750 votes).
+    Approx. mode of metro vote-count distribution : 2750 votes
+    KDE max density (homogeneity proxy)           : 0.00023
+    S&M station-level conditions (for reference):
+      (1) mode ∈ [80, 190]  → NO
+      (2) KDE max > 0.01    → NO
+  Neither S&M station-level condition met (expected at Dong aggregation).
+  Simulation-adjusted result [F7d] is the primary forensic indicator.
+
+  [F7b] Last-Digit – Metro in_precinct_early_dem
+  N (votes, len >= 2)  : 1,183
+  Chi-Square Statistic : 7.2367
+  p-value              : 0.6125  (df=9)
+  Result: PASS
+
+  [F7c] Early-Only Two-Party Ratio (in-precinct early, 63:37 hypothesis)
+  Macro early-voting two-party ratios (Dem vs Con):
+    Gyeonggi    : 73.66% vs 26.34%  (n=601 early stations)
+    Incheon     : 72.19% vs 27.81%  (n=156 early stations)
+    Seoul       : 71.98% vs 28.02%  (n=426 early stations)
+  Micro std of early two-party dem share across metro stations: 6.35%
+  HIGH micro std alongside any macro convergence → LLN, not top-down fixing.
+  LOW micro std (<2%) with near-63:37 macro → supports fixed-ratio hypothesis.
+
+  [F7d] Simulation-Adjusted 2BL Per Metro Constituency (S&M 2011)
+  Unit: dongs within each constituency  |  Simulations: 500  |  df_t=5
+  Metro constituencies analysed    : 80
+  With valid simulation results    : 80
+  Exceeding sim-adjusted threshold : 4 (5.0%)  (expected ~5%)
+  Result: PASS — rejection rate within chance expectation.
+
+  Top 10 constituencies by chi2_trans:
+  Province     Constituency           emp_χ²   sim95  trans_χ² n_dongs
+  Gyeonggi     용인시수지구                  27.32   19.67     23.48 ★  (n=11)
+  Gyeonggi     양평군                     21.30   18.66     19.28 ★  (n=12)
+  Gyeonggi     고양시일산동구                 16.48   14.66     19.00 ★  (n=12)
+  Gyeonggi     포천시                     17.54   15.96     18.58 ★  (n=14)
+  Gyeonggi     부천시오정구                  22.85   22.90     16.86  (n=7)
+  Incheon      연수구                     17.39   17.63     16.66  (n=15)
+  Seoul        은평구                     12.85   13.60     15.97  (n=16)
+  Gyeonggi     수원시장안구                  12.96   13.93     15.72  (n=10)
+  Gyeonggi     하남시                     15.71   17.01     15.61  (n=14)
+  Gyeonggi     구리시                     20.93   23.02     15.36  (n=8)
+
+============================================================
+  [F8] Beber & Scacco '0s and 5s' Test (Human Fabrication Signature)
+============================================================
+  Observed 0s/5s frequency : 20.83%  (Expected: 20.00%)
+  Z-Statistic              : 1.2331
+  p-value                  : 2.1755e-01
+  Result: PASS – No significant human preference for 0s and 5s.
+
+============================================================
+  [F9] Beber & Scacco Mean & Variance of Last Digits
+============================================================
+  Observed Mean     : 4.5564  (Expected: 4.5)
+  Observed Variance : 8.2018   (Expected: 8.25)
+  Mean Z-Statistic  : 1.1711  (p=2.4156e-01)
+  Result: PASS – Last digit mean conforms to uniform distribution.
+
+============================================================
+  [F10] Klimek et al. Mixture Modeling (Election Fingerprint)
+  NOTE: Fraud signal = HIGH TURNOUT + HIGH VOTE SHARE simultaneously.
+  A cluster extreme only in vote share at normal turnout is geographic.
+============================================================
+  BIC-selected n_components: 4  (BIC=-17726.0)
+  Identified Clusters (Turnout %, Dem Vote Share %):
+    Cluster 1: Weight=37.6%  Turnout=76.4%  VoteShare=49.5%
+             → Geographic/Partisan — swing or mixed region
+    Cluster 2: Weight=27.6%  Turnout=76.1%  VoteShare=38.0%
+             → Geographic/Partisan — Yeongnam region (Busan dominant)
+    Cluster 3: Weight=17.8%  Turnout=81.0%  VoteShare=86.6%
+             → Geographic/Partisan — Honam region (Jeonnam dominant)
+    Cluster 4: Weight=17.0%  Turnout=78.0%  VoteShare=21.8%
+             → Geographic/Partisan — Yeongnam region (Gyeongbuk dominant)
+  Result: No cluster meets the Klimek joint fraud criterion.
+          Cluster separation is explained by regional partisanship.
+
+============================================================
+  [F11] Sebastopol Test (Turnout–Share Correlation by Constituency)
+============================================================
+  [!] FLAG: 6 constituencies with Turnout–Share r > 0.70
+      This is a mechanical signature of localised ballot stuffing.
+      - 세종특별자치         : r = 0.8759  (n=24 Dongs)
+      - 흥덕             : r = 0.8191  (n=11 Dongs)
+      - 양양             : r = 0.8152  (n=6 Dongs)
+      - 제주             : r = 0.7905  (n=26 Dongs)
+      - 마산합포           : r = 0.7684  (n=15 Dongs)
+      - 달서             : r = 0.7216  (n=23 Dongs)
+
+=======================================================
+  LEVEL C │ Causal Inference & Regression (Age-Gender Cohorts)
+=======================================================
+
+[C1] Mobilization Test (WLS Gap Regression summary attached to report)
+[C2] Algorithmic Ratio Test (WLS Ratio Regression summary attached to report)
+
+[C3] Propensity Score Matching (ATT)
+Treatment: High In-Precinct Early Turnout Volume (> 2,599 votes)
+Matched on: 21 Age-Gender Cohorts, Urbanization, Wealth, Region, Military
+  Treated Dem Vote Share Mean : 50.58%
+  Matched Control Share Mean  : 45.93%
+  Estimated ATT               : +4.65%
+
+[C4] Fraud vs. Mobilization Diagnostic (WLS Variance Analysis)
+  Raw Mean Gap                     : +22.47%
+  Demographic Explained Variance R²: 73.30%
+  Unexplained Variance             : 26.70%
+  Conclusion: Demographics explain >30% — strong evidence for organic
+              demographic mobilization. Weakens uniform-fraud theories.
+
+[C5] Residual Normality Diagnostic (D'Agostino's K-squared test)
+  N (residuals)  : 3,553
+  Test Statistic : 177.4267
+  p-value        : 2.9668e-39
+  NOTE: With N > 2,000 even slight fat tails produce extreme p-values.
+        Interpret statistic magnitude and Q-Q plot shape, not the p-value alone.
+
+[C6] Anomaly Profiling: Top 8 Dongs by Absolute Unexplained Residual (Pop > 2,000)
+  Region           Dong             Raw Gap    Fitted  Residual
+  Gyeongbuk 성주군    벽진면                +6.16%    +21.33%    -15.17%
+  Jeonnam 장성군      삼계면               +25.10%    +11.76%    +13.34%
+  Gangwon 삼척시      정라동               +11.94%    +25.00%    -13.06%
+  Gyeongbuk 영덕군    축산면                +5.70%    +18.61%    -12.91%
+  Gangwon 화천군      상서면               +11.73%    +24.32%    -12.59%
+  Gyeongbuk 예천군    용궁면                +7.75%    +20.20%    -12.46%
+  Jeonbuk 전주시덕진구   금암동               +25.17%    +12.80%    +12.37%
+  Gyeonggi 하남시     초이동               +38.98%    +27.00%    +11.98%
+
+[C7] Isolation Forest Multivariate Anomaly Detection
+  Isolated 36 extreme multivariate anomalies across 26 dimensions.
+  These precincts exhibit statistically implausible feature combinations.
+
+  Top 5 anomalies by absolute gap:
+  Region           Dong             Raw Gap   Turnout Dem Share
+  Seoul 관악구        청룡동               +30.05%      76.5%      45.2%
+  Gyeonggi 파주시     운정4동              +29.05%      70.4%      58.8%
+  Seoul 관악구        신림동               +28.88%      68.0%      44.5%
+  Seoul 성북구        안암동               +28.21%      78.6%      43.9%
+  Seoul 관악구        중앙동               +27.18%      76.5%      48.3%
