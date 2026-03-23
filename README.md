@@ -2,6 +2,8 @@
 South Korean election forensics
 
 The main file: korean_election_forensics.ipynb
+Detailed results in test_diagnostics.txt
+Manuscript: south_korean_election_forensic.pdf
 
 The census data (csv files) are from https://www.data.go.kr/data/3033304/fileData.do (official Korean government census data), which directs to https://jumin.mois.go.kr/ageStatMonth.do .
 
