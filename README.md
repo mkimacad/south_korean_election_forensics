@@ -9,7 +9,9 @@ The main forensic file (outdated, to be updated/simplified so that regressions a
 
 korean_election_forensics.ipynb
 
-The main regression file: korean_election_regressions.ipynb
+The main regression file:
+
+korean_election_regressions.ipynb
 
 Required data files (./ as the working directory where the python or jupyter notebook files are at):
 
