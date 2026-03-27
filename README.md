@@ -15,3 +15,5 @@ The general elction results (csv files) are from official Korean government data
 The actual monthly housing price data are from official Korean government data, https://www.data.go.kr/data/3050988/fileData.do, which directs to https://rt.molit.go.kr/pt/xls/xls.do?mobileAt=
 
 (Additional data: 시군구별 경제활동인구조사 지역별고용조사 + GRDP data from KOSIS)
+
+Polling station information data from http://data.go.kr/data/15000836/openapi.do
