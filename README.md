@@ -15,6 +15,8 @@ korean_election_regressions.ipynb
 
 Required data files (./ as the working directory where the python or jupyter notebook files are at):
 
+After downloading ipynb files at ./, unzip data/regression_load.zip into ./ - that's all we need. OR:
+
 place repo's data/processed_apt_price_data files into ./output_data directory in jupyterlab or python environment
 
 place files in repo's data/census_data, data/election_result_data, data/employment_data, data/polling_station_count_data into ./ in Jupyterlab or python environment.
