@@ -5,7 +5,9 @@ South Korean election forensics
 
 Code information:
 
-The main forensic file: korean_election_forensics.ipynb
+The main forensic file (outdated, to be updated/simplified so that regressions are solely done in the regression file):
+
+korean_election_forensics.ipynb
 
 The main regression file: korean_election_regressions.ipynb
 
