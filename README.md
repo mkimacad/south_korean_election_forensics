@@ -9,21 +9,23 @@ The main forensic file (outdated, to be updated/simplified so that regressions a
 
 korean_election_forensics.ipynb
 
-The main regression file:
+The main regression file (run concurrently with the main forensic file):
 
 korean_election_regressions.ipynb
 
 Required data files (./ as the working directory where the python or jupyter notebook files are at):
 
-place processed_apt_data_*.csv files into ./output_data directory
+place repo's data/processed_apt_price_data files into ./output_data directory in jupyterlab or python environment
 
-place other csv data into ./: stations_normal_*.csv files, industry_employment_data.csv, men_employment_data.csv, non_participant_employment_data.csv, occupation_employment_data.csv, occupation_type_employment_data.csv, women_employment_data.csv and all *_census.csv and *_result.csv files.
+place files in repo's data/census_data, data/election_result_data, data/employment_data, data/polling_station_count_data into ./ in Jupyterlab or python environment.
 
 ==========
 
 Regression results:
 
-See comprehensive_regression_logs_*.txt files. The regression results used in the manuscript have no turnout covariate in democratic vote share regressions - this is the baseline we use.
+See results/regression_results files.
+
+The regression results used in the manuscript have no turnout covariate in democratic vote share regressions - this is the baseline we use.
 
 ==========
 
