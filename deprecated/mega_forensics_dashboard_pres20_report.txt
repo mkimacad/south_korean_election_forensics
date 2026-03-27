@@ -1,0 +1,727 @@
+======================================================================
+  ELECTION FORENSICS & REGRESSION REPORT: 20th Presidential Election (2022)
+======================================================================
+
+[ SECTION 1: FORENSICS SUITE  (F1–F12) ]
+
+
+--- [5/6] Forensics Suite ---
+
+  ── Variable Definitions ──
+  early_pct    = in_precinct_early_dem ÷ in_precinct_early_total
+                 The Democratic candidate's vote share among all valid ballots
+                 cast at in-precinct early-voting stations (관내사전투표소).
+  sameday_pct  = same_day_dem ÷ same_day_total
+                 The Democratic share among voters who showed up on election day
+                 (당일투표), the conventional voting mode.
+  gap          = early_pct − sameday_pct
+  vote_share   = (in_precinct_early_dem + same_day_dem + allocated_out_precinct_dem) ÷
+                 (in_precinct_early_total + same_day_total + allocated_out_precinct_total)
+                 Combined Democratic share across all voting modes (Dong level).
+                 Out-of-precinct early votes are proportionally allocated to dongs.
+  turnout      = (sum_vote_geo + allocated_out_precinct_turnout) ÷
+                 (sum_people + allocated_out_precinct_turnout)
+                 Official turnout rate. Out-of-precinct ballots and electors
+                 are proportionally allocated to accurately reflect Dong turnout.
+
+============================================================
+  [F1] Second-Digit Benford's Law (2BL) — Nationwide Naive Test
+  NOTE: Uses conventional χ²(9). See [F7d] for simulation-adjusted metro result.
+============================================================
+  N (votes >= 10)      : 3,556
+  Chi-Square Statistic : 14.6304
+  p-value              : 0.1016  (df=9)
+  Result: PASS
+
+  Observed vs Expected (digits 0–9):
+    digit 0: obs=  425  exp=  425.6
+    digit 1: obs=  385  exp=  405.0
+    digit 2: obs=  373  exp=  387.0
+    digit 3: obs=  328  exp=  371.0
+    digit 4: obs=  364  exp=  356.7
+    digit 5: obs=  351  exp=  343.8
+    digit 6: obs=  366  exp=  332.0
+    digit 7: obs=  305  exp=  321.3
+    digit 8: obs=  340  exp=  311.4
+    digit 9: obs=  319  exp=  302.3
+
+============================================================
+  [F2] Last-Digit Uniformity Test (Three-Series Comparative)
+============================================================
+  [in_precinct_early_dem  (early, DEM)]  N=3,556  χ²=30.45  p=0.0004  Cramér's V=0.0308  FAIL ★
+  [in_precinct_early_con  (early, CON)]  N=3,555  χ²=13.09  p=0.1585  Cramér's V=0.0202  PASS
+  [same_day_dem   (sameday, DEM)]  N=3,556  χ²=7.39  p=0.5964  Cramér's V=0.0152  PASS
+  [!] ASYMMETRIC FAILURE: in_precinct_early_dem fails while in_precinct_early_con and
+      same_day_dem pass. This cannot be explained by a counting machine artifact
+      (which would affect all candidates equally). It is candidate-specific.
+
+  Binomial simulation null (using actual in_precinct_early_total & p_dem per dong):
+  Simulated χ²=7.06 (p=0.6309) vs Actual χ²=30.45 (p=0.0004)
+  The actual deviation exceeds what pure binomial sampling predicts.
+
+============================================================
+  [F3] Vote-Share Variance (Inter-Neighbourhood Dispersion)
+============================================================
+  Mean within-city std of dem vote share: 3.08%
+
+============================================================
+  [F5] Invalid Vote Analysis
+============================================================
+  N stations        : 17,974
+  Pearson r (invalid rate ↔ dem share): -0.1053  (p=0.0000)
+  Result: Non-trivial r=-0.1053. Warrants further investigation.
+
+============================================================
+  [F6] Regional Aggregate Analysis (Metropolitan Two-Party Ratio)
+============================================================
+    Gyeonggi    : 52.57% vs 47.43%  (n=3,825 stations)
+    Incheon     : 50.76% vs 49.24%  (n=885 stations)
+    Seoul (Gangnam3gu): 35.01% vs 64.99%  (n=424 stations)
+    Seoul (Non-Gangnam3gu): 49.25% vs 50.75%  (n=2,265 stations)
+  Micro std of two-party dem share across metro stations: 8.87%
+
+============================================================
+  [F7] Metro Early-Voting Digit Tests & 63:37 Ratio Hypothesis
+  (Seoul / Incheon / Gyeonggi – in-precinct early votes only)
+============================================================
+
+  [F7a] Naive 2BL – Metro in_precinct_early_dem (N=1,152 precincts)
+  NOTE: Naive χ²(9) test only. See [F7d] for simulation-adjusted result.
+  N (votes >= 10)      : 1,152
+  Chi-Square Statistic : 8.2859
+  p-value              : 0.5056  (df=9)
+  Result: PASS
+
+  Scale-Range Comparison (Fewster 2009):
+    Nationwide [F1] range : 31 – 17,318 (2.75 orders of magnitude)
+    Metro [F7a] range     : 31 – 17,318 (2.75 orders of magnitude)
+
+  Shikano & Mack (2011) Homogeneity Diagnostic:
+  NOTE: S&M thresholds calibrated for station-level counts (~50–500 votes).
+  This analysis uses Dong-level aggregates (mode ~2278 votes).
+    Approx. mode of metro vote-count distribution : 2278 votes
+    KDE max density (homogeneity proxy)           : 0.00026
+    S&M station-level conditions (for reference):
+      (1) mode ∈ [80, 190]  → NO
+      (2) KDE max > 0.01    → NO
+  Neither S&M station-level condition met (expected at Dong aggregation).
+  Simulation-adjusted result [F7d] is the primary forensic indicator.
+
+  [F7b] Last-Digit – Metro in_precinct_early_dem
+  N (votes, len >= 2)  : 1,152
+  Chi-Square Statistic : 10.7257
+  p-value              : 0.2950  (df=9)
+  Result: PASS
+
+  [F7c] Early-Only Two-Party Ratio (in-precinct early, 63:37 hypothesis)
+  Macro early-voting two-party ratios (Dem vs Con):
+    Gyeonggi              : 57.00% vs 43.00%  (n=560 early stations)
+    Incheon               : 54.54% vs 45.46%  (n=155 early stations)
+    Seoul (Gangnam3gu)    : 42.16% vs 57.84%  (n=67 early stations)
+    Seoul (Non-Gangnam3gu): 55.88% vs 44.12%  (n=358 early stations)
+    -------------------------------------------------------
+    Seoul (Combined Total): 53.65% vs 46.35%  (n=425 early stations)
+
+  Micro std of early two-party dem share across metro stations: 7.03%
+  HIGH micro std alongside any macro convergence → LLN, not top-down fixing.
+  LOW micro std (<2%) with near-63:37 macro → supports fixed-ratio hypothesis.
+
+  [F7d] Simulation-Adjusted 2BL Per Metro Constituency (S&M 2011)
+  Unit: dongs within each constituency  |  Simulations: 500  |  df_t=5
+  Metro constituencies analysed    : 77
+  With valid simulation results    : 77
+  Exceeding sim-adjusted threshold : 1 (1.3%)  (expected ~5%)
+  Result: PASS — rejection rate within chance expectation.
+
+  Top 10 constituencies by chi2_trans:
+  Province               Constituency           emp_χ²   sim95  trans_χ² n_dongs
+  Seoul (Non-Gangnam3gu) 강동구                     20.56   18.78     18.50 ★  (n=18)
+  Seoul (Gangnam3gu)     서초구                     16.28   17.01     16.17  (n=18)
+  Seoul (Non-Gangnam3gu) 동작구                     15.11   16.63     15.35  (n=15)
+  Gyeonggi               고양시덕양구                  15.23   16.97     15.16  (n=21)
+  Gyeonggi               용인시수지구                  14.48   16.39     14.93  (n=11)
+  Gyeonggi               성남시수정구                  14.65   16.66     14.86  (n=17)
+  Seoul (Non-Gangnam3gu) 서대문구                    13.83   15.97     14.64  (n=14)
+  Incheon                계양구                     14.83   18.29     13.70  (n=12)
+  Gyeonggi               광명시                     11.70   15.51     12.75  (n=18)
+  Seoul (Non-Gangnam3gu) 노원구                     11.10   14.73     12.74  (n=19)
+
+============================================================
+  [F8] Beber & Scacco '0s and 5s' Test (Human Fabrication Signature)
+============================================================
+  Observed 0s/5s frequency : 19.94%  (Expected: 20.00%)
+  Z-Statistic              : -0.0922
+  p-value                  : 9.2651e-01
+  Result: PASS – No significant human preference for 0s and 5s.
+
+============================================================
+  [F9] Beber & Scacco Mean & Variance of Last Digits
+============================================================
+  Observed Mean     : 4.4570  (Expected: 4.5)
+  Observed Variance : 8.5025   (Expected: 8.25)
+  Mean Z-Statistic  : -0.8933  (p=3.7171e-01)
+  Result: PASS – Last digit mean conforms to uniform distribution.
+
+============================================================
+  [F10] Klimek et al. Mixture Modeling (Election Fingerprint)
+  NOTE: Fraud signal = HIGH TURNOUT + HIGH VOTE SHARE simultaneously.
+  A cluster extreme only in vote share at normal turnout is geographic.
+============================================================
+  BIC-selected n_components: 4  (BIC=-18001.4)
+  Identified Clusters (Turnout %, Dem Vote Share %):
+    Cluster 1: Weight=35.0%  Turnout=76.2%  VoteShare=49.2%
+             → Geographic/Partisan — swing or mixed region
+    Cluster 2: Weight=29.6%  Turnout=77.1%  VoteShare=37.8%
+             → Geographic/Partisan — Yeongnam region (Busan dominant)
+    Cluster 3: Weight=17.9%  Turnout=81.7%  VoteShare=85.5%
+             → Geographic/Partisan — Honam region (Jeonnam dominant)
+    Cluster 4: Weight=17.5%  Turnout=79.7%  VoteShare=22.0%
+             → Geographic/Partisan — Yeongnam region (Gyeongbuk dominant)
+  Result: No cluster meets the Klimek joint fraud criterion.
+          Cluster separation is explained by regional partisanship.
+
+============================================================
+  [F11] Genuine Turnout-to-Dem-Share Correlation Test
+  Tests whether voter turnout genuinely correlates with Democratic party
+  candidate votes, independent of election forensics/fraud framing.
+============================================================
+  Analysed 244 constituencies.
+  Top 15 strongest Turnout–Share correlations (positive or negative):
+      - Chungbuk        진천군                 : r = -0.8580 *   (n=7 Dongs)
+      - Gyeongbuk       청도군                 : r = -0.8575 **  (n=9 Dongs)
+      - Gyeonggi        안산시상록구              : r = -0.8296 *** (n=13 Dongs)
+      - Gyeongbuk       칠곡군                 : r = -0.8194 *   (n=8 Dongs)
+      - Sejong          세종특별자치시             : r = +0.8134 *** (n=22 Dongs)
+      - Gyeonggi        의왕시                 : r = -0.8129 *   (n=6 Dongs)
+      - Chungbuk        음성군                 : r = -0.7920 *   (n=9 Dongs)
+      - Seoul (Gangnam3 송파구                 : r = -0.7857 *** (n=27 Dongs)
+      - Seoul (Non-Gang 도봉구                 : r = -0.7857 *** (n=14 Dongs)
+      - Daegu           서구                  : r = +0.7785 *** (n=17 Dongs)
+      - Chungnam        태안군                 : r = -0.7575 *   (n=8 Dongs)
+      - Gyeongbuk       봉화군                 : r = -0.7527 *   (n=10 Dongs)
+      - Jeonbuk         장수군                 : r = +0.7522     (n=7 Dongs)
+      - Chungbuk        청주시흥덕구              : r = +0.7483 **  (n=11 Dongs)
+      - Seoul (Non-Gang 양천구                 : r = -0.7385 *** (n=18 Dongs)
+
+============================================================
+  [F12] Absentee (Out-of-Precinct Early) Shift Analysis
+  Compares: In-precinct early gap vs Out-of-precinct early gap vs Same-day
+  Unit: constituency level
+============================================================
+
+  N constituencies with sufficient out-of-precinct early data: 250
+
+  Gap = (voting-mode Dem share) − (same-day Dem share)
+  Metric                                            Mean       Std
+  -----------------------------------------------------------------
+  In-precinct early gap  (관내사전 − 당일)               +6.60%     2.70%
+  Out-of-precinct early gap (관외사전 − 당일)            +5.20%     4.83%
+  Gap shift  (out − in)  : extra absentee premium    -0.36%     0.98%
+
+  Pearson r(in-precinct gap ↔ out-of-precinct gap): 0.4104  (p=1.4227e-11)
+
+  Province-level absentee shift breakdown (sorted by gap_shift desc):
+  Province                  N    IP gap   OOP gap     Shift
+  ------------------------------------------------------------
+  Gyeongbuk                24     +2.72%     +7.84%     +1.03%
+  Daegu                     8     +4.37%     +6.87%     +0.63%
+  Gyeongnam                22     +6.37%     +7.83%     +0.30%
+  Gangwon                  18     +6.71%     +7.93%     +0.25%
+  Seoul (Gangnam3gu)        3    +11.33%    +11.82%     +0.18%
+  Busan                    16     +7.96%     +8.74%     +0.17%
+  Chungbuk                 14     +5.85%     +6.23%     +0.05%
+  Chungnam                 16     +7.18%     +7.56%     +0.04%
+  Incheon                  10     +6.65%     +5.19%     -0.32%
+  Daejeon                   5     +9.15%     +7.77%     -0.38%
+  Seoul (Non-Gangnam3gu)   22    +11.66%     +8.86%     -0.78%
+  Gyeonggi                 42     +7.61%     +4.62%     -0.80%
+  Ulsan                     5     +7.67%     +3.11%     -1.01%
+  Gwangju                   5     +4.79%     -0.37%     -1.39%
+  Jeju                      2     +6.36%     -0.28%     -1.41%
+  Sejong                    1     +9.64%     +3.77%     -1.53%
+  Jeonbuk                  15     +5.03%     -3.14%     -1.64%
+  Jeonnam                  22     +3.70%     -4.16%     -1.70%
+
+  Top 10 constituencies by |gap_shift| (largest absentee premium):
+  Province             Constituency           IP gap   OOP gap     Shift   N_oop
+  ----------------------------------------------------------------------------------
+  Ulsan                북구                      +9.58%     -1.20%     -2.54%  13,928
+  Jeonnam              광양시                     +3.39%     -7.92%     -2.47%  12,261
+  Jeonnam              담양군                     +3.86%     -3.81%     -2.04%   6,427
+  Jeonnam              여수시                     +4.41%     -8.81%     -1.97%  16,453
+  Jeonnam              영광군                     +2.89%     -5.58%     -1.97%   5,587
+  Gyeongbuk            봉화군                     +5.29%    +14.34%     +1.92%   2,886
+  Jeonnam              구례군                     +4.43%     -4.67%     -1.92%   2,719
+  Jeonbuk              군산시                     +5.45%     -6.50%     -1.89%  16,207
+  Chungnam             예산군                     +5.99%    +13.92%     +1.87%   5,890
+  Jeonnam              순천시                     +4.87%     -4.57%     -1.86%  21,738
+
+  Gap shift direction (threshold ±2pp):
+    Absentee MORE Dem than in-precinct early (shift > +2pp) : 0 (0.0%)
+    Absentee LESS Dem than in-precinct early (shift < −2pp) : 3 (1.2%)
+    Broadly consistent (|shift| ≤ 2pp)                      : 247 (98.8%)
+
+  One-sample t-test: mean gap_shift = 0?
+    t = -5.7509,  p = 2.5917e-08
+  SIGNIFICANT: Out-of-precinct early votes lean systematically Con relative
+  to in-precinct early votes, beyond chance. Mean shift = -0.36pp.
+
+[ SECTION 2: CAUSAL INFERENCE & PCA WLS REGRESSION  (C1–C8) ]
+
+
+============================================================
+  LEVEL C │ Causal Inference & Regression
+  Using Single Global PCA (Age + Emp + Wealth) + Within-group Demeaning
+============================================================
+
+  ── Variable Coverage Diagnostic ──
+  Valid Age-Gender Features             : 22
+  Valid Employment Features             : 28
+
+  ── Global PCA Summary ──
+  Features entering PCA : 51
+  Global PC components retained : 17
+
+  ── Detailed Global PCA Component Breakdown ──
+  (These perfectly orthogonal components are included in the regressions as global_pcX_dm)
+
+    [ global_pc1_dm ] (Explains 47.9% of total variance)
+      • MORE of: pct_f_70plus (+0.18), occ_nonwage_share (+0.18), ind_agriculture (+0.18), pct_m_70plus (+0.18)
+      • LESS of: occ_wage_share (-0.18), occ_regular_share (-0.18), job_clerical (-0.17), pct_f_3034 (-0.17)
+
+    [ global_pc2_dm ] (Explains 12.0% of total variance)
+      • MORE of: emp_men_total (+0.26), emp_men_5064 (+0.22), emp_men_3049 (+0.20), pct_m_4549 (+0.20)
+      • LESS of: job_service_sales (-0.23), pct_f_6064 (-0.21), pct_f_6569 (-0.21), ind_retail_food (-0.21)
+
+    [ global_pc3_dm ] (Explains 7.7% of total variance)
+      • MORE of: job_skilled_machine (+0.41), ind_manufacturing (+0.39), nonp_middle_share (+0.27), pct_m_5559 (+0.25)
+      • LESS of: emp_wmn_3049 (-0.30), nonp_male_share (-0.19), log_apt_price (-0.15), pct_f_2529 (-0.13)
+
+    [ global_pc4_dm ] (Explains 5.8% of total variance)
+      • MORE of: nonp_male_share (+0.35), job_simple_labor (+0.26), job_service_sales (+0.25), pct_m_5054 (+0.23)
+      • LESS of: emp_wmn_1529 (-0.28), emp_men_1529 (-0.27), log_apt_price (-0.24), emp_men_3049 (-0.18)
+
+    [ global_pc5_dm ] (Explains 3.9% of total variance)
+      • MORE of: job_simple_labor (+0.33), pct_m_3034 (+0.24), job_skilled_machine (+0.23), pct_m_3539 (+0.21)
+      • LESS of: pct_m_5054 (-0.31), pct_f_5054 (-0.29), pct_f_5559 (-0.26), job_professional (-0.22)
+
+    [ global_pc6_dm ] (Explains 3.6% of total variance)
+      • MORE of: emp_men_1529 (+0.45), emp_wmn_1529 (+0.34), job_simple_labor (+0.31), pct_f_5559 (+0.29)
+      • LESS of: nonp_young_share (-0.35), ind_manufacturing (-0.12), pct_m_4044 (-0.11), pct_f_70plus (-0.11)
+
+    [ global_pc7_dm ] (Explains 3.0% of total variance)
+      • MORE of: nonp_young_share (+0.49), pct_m_2529 (+0.32), emp_men_3049 (+0.28), emp_men_5064 (+0.25)
+      • LESS of: pct_m_4044 (-0.21), pct_f_4044 (-0.20), pct_m_4549 (-0.20), emp_men_1529 (-0.16)
+
+    [ global_pc8_dm ] (Explains 2.6% of total variance)
+      • MORE of: emp_men_3049 (+0.32), job_simple_labor (+0.30), ind_services (+0.28), ind_construction (+0.26)
+      • LESS of: pct_m_2529 (-0.29), pct_f_5559 (-0.24), pct_f_2529 (-0.23), ind_manufacturing (-0.20)
+
+    [ global_pc9_dm ] (Explains 1.8% of total variance)
+      • MORE of: pct_f_5559 (+0.55), pct_f_6064 (+0.29), pct_f_3539 (+0.27), pct_m_3539 (+0.25)
+      • LESS of: pct_m_5054 (-0.33), pct_f_70plus (-0.20), pct_f_1824 (-0.17), pct_m_70plus (-0.16)
+
+    [ global_pc10_dm ] (Explains 1.6% of total variance)
+      • MORE of: nonp_male_share (+0.43), nonp_young_share (+0.30), pct_m_5559 (+0.29), emp_wmn_3049 (+0.28)
+      • LESS of: ind_construction (-0.35), pct_m_1824 (-0.19), pct_f_1824 (-0.16), emp_men_3049 (-0.13)
+
+    [ global_pc11_dm ] (Explains 1.2% of total variance)
+      • MORE of: ind_construction (+0.35), pct_m_5559 (+0.28), ind_retail_food (+0.28), pct_m_5054 (+0.27)
+      • LESS of: job_simple_labor (-0.34), ind_manufacturing (-0.22), emp_men_1529 (-0.19), emp_wmn_3049 (-0.19)
+
+    [ global_pc12_dm ] (Explains 1.0% of total variance)
+      • MORE of: emp_wmn_1529 (+0.53), ind_construction (+0.39), nonp_male_share (+0.25), nonp_young_share (+0.21)
+      • LESS of: ind_services (-0.24), pct_m_5559 (-0.24), job_simple_labor (-0.22), pct_m_3034 (-0.19)
+
+    [ global_pc13_dm ] (Explains 0.9% of total variance)
+      • MORE of: nonp_middle_share (+0.49), ind_retail_food (+0.20), job_service_sales (+0.17), emp_men_5064 (+0.17)
+      • LESS of: ind_construction (-0.40), emp_wmn_3049 (-0.33), emp_men_3049 (-0.28), pct_m_5559 (-0.17)
+
+    [ global_pc14_dm ] (Explains 0.8% of total variance)
+      • MORE of: job_service_sales (+0.47), emp_men_3049 (+0.42), ind_retail_food (+0.40), emp_wmn_3049 (+0.18)
+      • LESS of: job_simple_labor (-0.32), ind_construction (-0.23), ind_services (-0.16), nonp_middle_share (-0.15)
+
+    [ global_pc15_dm ] (Explains 0.6% of total variance)
+      • MORE of: pct_f_6064 (+0.33), pct_m_2529 (+0.29), pct_f_6569 (+0.29), pct_m_4549 (+0.26)
+      • LESS of: nonp_young_share (-0.23), pct_f_70plus (-0.22), pct_m_5559 (-0.20), ind_retail_food (-0.19)
+
+    [ global_pc16_dm ] (Explains 0.5% of total variance)
+      • MORE of: log_apt_price (+0.56), job_simple_labor (+0.34), emp_men_5064 (+0.20), emp_wmn_1529 (+0.16)
+      • LESS of: emp_men_1529 (-0.41), ind_services (-0.22), nonp_middle_share (-0.20), pct_f_5559 (-0.16)
+
+    [ global_pc17_dm ] (Explains 0.5% of total variance)
+      • MORE of: emp_men_1529 (+0.48), nonp_young_share (+0.28), ind_transport_finance (+0.24), ind_construction (+0.20)
+      • LESS of: emp_wmn_1529 (-0.33), emp_men_3049 (-0.22), pct_f_5054 (-0.18), ind_services (-0.15)
+
+  ── Variance Inflation Factor (VIF) Diagnostic ──
+  Checking multicollinearity among the demeaned Global PCs.
+  (Because we used a single global PCA, these should be near 1.0, proving orthogonality)
+    global_pc1_dm       :  2.49 (Safe)
+    global_pc4_dm       :  1.77 (Safe)
+    global_pc2_dm       :  1.58 (Safe)
+    global_pc3_dm       :  1.35 (Safe)
+    global_pc16_dm      :  1.27 (Safe)
+    global_pc6_dm       :  1.26 (Safe)
+    global_pc7_dm       :  1.20 (Safe)
+    global_pc8_dm       :  1.19 (Safe)
+    global_pc5_dm       :  1.19 (Safe)
+    global_pc9_dm       :  1.06 (Safe)
+    global_pc10_dm      :  1.06 (Safe)
+    global_pc14_dm      :  1.05 (Safe)
+    global_pc11_dm      :  1.05 (Safe)
+    global_pc17_dm      :  1.04 (Safe)
+    global_pc12_dm      :  1.03 (Safe)
+    global_pc15_dm      :  1.02 (Safe)
+    global_pc13_dm      :  1.01 (Safe)
+
+  ── Automating Spatial Fixed Effects Selection (BIC) ──
+    Testing None (Demographics/Wealth only)               | BIC: -13,100.6
+    Testing Macro-Regions (Metro, Honam, Yeongnam, etc.)  | BIC: -13,909.9
+    Testing Provinces (Current Baseline)                  | BIC: -15,472.4
+  → Automatically Selected: Provinces (Current Baseline) (Lowest BIC)
+
+[C1] Mobilization Test — WLS Gap Regression
+  Dependent variable : gap  (in-precinct early Dem share − same-day Dem share)
+  early_pct is the Democratic share among voters who used in-precinct early voting
+  (관내사전투표). sameday_pct is the Democratic share on election day (당일투표).
+  gap = early_pct − sameday_pct: positive values indicate the Democratic candidate
+  outperformed in early voting relative to same-day within the same precinct.
+  Weights            : sum_people (dong population)
+  SE correction      : HC3 (heteroskedasticity-robust)
+
+                            WLS Regression Results                            
+==============================================================================
+Dep. Variable:                    gap   R-squared:                       0.542
+Model:                            WLS   Adj. R-squared:                  0.537
+Method:                 Least Squares   F-statistic:                     142.8
+Date:                Wed, 25 Mar 2026   Prob (F-statistic):          3.24e-134
+Time:                        21:01:55   Log-Likelihood:                 7879.3
+No. Observations:                3556   AIC:                        -1.569e+04
+Df Residuals:                    3521   BIC:                        -1.547e+04
+Df Model:                          34                                         
+Covariance Type:              cluster                                         
+====================================================================================================================================
+                                                                       coef    std err          z      P>|z|      [0.025      0.975]
+------------------------------------------------------------------------------------------------------------------------------------
+Intercept                                                            0.0655      0.002     36.361      0.000       0.062       0.069
+C(province_tag, Treatment('Chungbuk'))[T.Busan]                      0.0175      0.002      7.555      0.000       0.013       0.022
+C(province_tag, Treatment('Chungbuk'))[T.Chungnam]                   0.0130      0.002      5.526      0.000       0.008       0.018
+C(province_tag, Treatment('Chungbuk'))[T.Daegu]                     -0.0227      0.003     -7.815      0.000      -0.028      -0.017
+C(province_tag, Treatment('Chungbuk'))[T.Daejeon]                    0.0263      0.003      8.183      0.000       0.020       0.033
+C(province_tag, Treatment('Chungbuk'))[T.Gangwon]                    0.0064      0.005      1.322      0.186      -0.003       0.016
+C(province_tag, Treatment('Chungbuk'))[T.Gwangju]                   -0.0189      0.003     -6.481      0.000      -0.025      -0.013
+C(province_tag, Treatment('Chungbuk'))[T.Gyeongbuk]                 -0.0296      0.003     -9.278      0.000      -0.036      -0.023
+C(province_tag, Treatment('Chungbuk'))[T.Gyeonggi]                   0.0128      0.003      4.941      0.000       0.008       0.018
+C(province_tag, Treatment('Chungbuk'))[T.Gyeongnam]                  0.0059      0.003      1.699      0.089      -0.001       0.013
+C(province_tag, Treatment('Chungbuk'))[T.Incheon]                    0.0023      0.003      0.829      0.407      -0.003       0.008
+C(province_tag, Treatment('Chungbuk'))[T.Jeju]                      -0.0077      0.005     -1.463      0.143      -0.018       0.003
+C(province_tag, Treatment('Chungbuk'))[T.Jeonbuk]                   -0.0122      0.002     -4.911      0.000      -0.017      -0.007
+C(province_tag, Treatment('Chungbuk'))[T.Jeonnam]                   -0.0245      0.003     -9.217      0.000      -0.030      -0.019
+C(province_tag, Treatment('Chungbuk'))[T.Sejong]                     0.0311      0.002     17.872      0.000       0.028       0.034
+C(province_tag, Treatment('Chungbuk'))[T.Seoul (Gangnam3gu)]         0.0445      0.003     13.199      0.000       0.038       0.051
+C(province_tag, Treatment('Chungbuk'))[T.Seoul (Non-Gangnam3gu)]     0.0495      0.002     21.016      0.000       0.045       0.054
+C(province_tag, Treatment('Chungbuk'))[T.Ulsan]                      0.0115      0.005      2.310      0.021       0.002       0.021
+global_pc1_dm                                                       -0.0037      0.001     -3.772      0.000      -0.006      -0.002
+global_pc2_dm                                                       -0.0024      0.001     -2.978      0.003      -0.004      -0.001
+global_pc3_dm                                                       -0.0019      0.001     -3.165      0.002      -0.003      -0.001
+global_pc4_dm                                                       -0.0016      0.001     -1.952      0.051      -0.003    6.57e-06
+global_pc5_dm                                                       -0.0034      0.001     -6.099      0.000      -0.005      -0.002
+global_pc6_dm                                                       -0.0012      0.001     -1.787      0.074      -0.003       0.000
+global_pc7_dm                                                        0.0003      0.001      0.364      0.716      -0.001       0.002
+global_pc8_dm                                                        0.0003      0.001      0.395      0.693      -0.001       0.002
+global_pc9_dm                                                       -0.0011      0.001     -1.913      0.056      -0.002     2.6e-05
+global_pc10_dm                                                       0.0027      0.001      4.097      0.000       0.001       0.004
+global_pc11_dm                                                       0.0013      0.001      1.990      0.047    1.92e-05       0.002
+global_pc12_dm                                                       0.0004      0.001      0.632      0.527      -0.001       0.002
+global_pc13_dm                                                    6.482e-05      0.001      0.101      0.919      -0.001       0.001
+global_pc14_dm                                                       0.0004      0.001      0.576      0.565      -0.001       0.002
+global_pc15_dm                                                      -0.0011      0.001     -1.852      0.064      -0.002    6.38e-05
+global_pc16_dm                                                       0.0008      0.001      1.169      0.242      -0.001       0.002
+global_pc17_dm                                                      -0.0016      0.001     -2.177      0.030      -0.003      -0.000
+==============================================================================
+Omnibus:                       85.723   Durbin-Watson:                   1.777
+Prob(Omnibus):                  0.000   Jarque-Bera (JB):              182.092
+Skew:                           0.107   Prob(JB):                     2.88e-40
+Kurtosis:                       4.088   Cond. No.                         38.0
+==============================================================================
+
+Notes:
+[1] Standard Errors are robust to cluster correlation (cluster)
+
+[C2] Algorithmic Ratio Test — WLS Early-on-Sameday Regression
+
+                            WLS Regression Results                            
+==============================================================================
+Dep. Variable:              early_pct   R-squared:                       0.983
+Model:                            WLS   Adj. R-squared:                  0.983
+Method:                 Least Squares   F-statistic:                     5009.
+Date:                Wed, 25 Mar 2026   Prob (F-statistic):          4.60e-308
+Time:                        21:01:55   Log-Likelihood:                 8026.8
+No. Observations:                3556   AIC:                        -1.598e+04
+Df Residuals:                    3520   BIC:                        -1.576e+04
+Df Model:                          35                                         
+Covariance Type:              cluster                                         
+====================================================================================================================================
+                                                                       coef    std err          z      P>|z|      [0.025      0.975]
+------------------------------------------------------------------------------------------------------------------------------------
+Intercept                                                            0.1178      0.008     15.580      0.000       0.103       0.133
+C(province_tag, Treatment('Chungbuk'))[T.Busan]                      0.0107      0.002      4.606      0.000       0.006       0.015
+C(province_tag, Treatment('Chungbuk'))[T.Chungnam]                   0.0114      0.002      4.619      0.000       0.007       0.016
+C(province_tag, Treatment('Chungbuk'))[T.Daegu]                     -0.0493      0.005    -10.189      0.000      -0.059      -0.040
+C(province_tag, Treatment('Chungbuk'))[T.Daejeon]                    0.0302      0.003      9.538      0.000       0.024       0.036
+C(province_tag, Treatment('Chungbuk'))[T.Gangwon]                    0.0020      0.005      0.417      0.677      -0.007       0.011
+C(province_tag, Treatment('Chungbuk'))[T.Gwangju]                    0.0385      0.009      4.419      0.000       0.021       0.056
+C(province_tag, Treatment('Chungbuk'))[T.Gyeongbuk]                 -0.0581      0.005    -11.439      0.000      -0.068      -0.048
+C(province_tag, Treatment('Chungbuk'))[T.Gyeonggi]                   0.0233      0.003      8.533      0.000       0.018       0.029
+C(province_tag, Treatment('Chungbuk'))[T.Gyeongnam]                 -0.0062      0.004     -1.508      0.132      -0.014       0.002
+C(province_tag, Treatment('Chungbuk'))[T.Incheon]                    0.0099      0.003      3.521      0.000       0.004       0.015
+C(province_tag, Treatment('Chungbuk'))[T.Jeju]                       0.0066      0.005      1.403      0.161      -0.003       0.016
+C(province_tag, Treatment('Chungbuk'))[T.Jeonbuk]                    0.0395      0.008      5.155      0.000       0.024       0.055
+C(province_tag, Treatment('Chungbuk'))[T.Jeonnam]                    0.0332      0.009      3.794      0.000       0.016       0.050
+C(province_tag, Treatment('Chungbuk'))[T.Sejong]                     0.0400      0.002     20.976      0.000       0.036       0.044
+C(province_tag, Treatment('Chungbuk'))[T.Seoul (Gangnam3gu)]         0.0321      0.007      4.807      0.000       0.019       0.045
+C(province_tag, Treatment('Chungbuk'))[T.Seoul (Non-Gangnam3gu)]     0.0546      0.002     24.032      0.000       0.050       0.059
+C(province_tag, Treatment('Chungbuk'))[T.Ulsan]                      0.0088      0.006      1.480      0.139      -0.003       0.020
+sameday_pct                                                          0.8657      0.019     45.612      0.000       0.828       0.903
+global_pc1_dm                                                       -0.0068      0.001     -6.004      0.000      -0.009      -0.005
+global_pc2_dm                                                       -0.0010      0.001     -1.107      0.268      -0.003       0.001
+global_pc3_dm                                                       -0.0007      0.001     -1.185      0.236      -0.002       0.000
+global_pc4_dm                                                       -0.0011      0.001     -1.181      0.238      -0.003       0.001
+global_pc5_dm                                                       -0.0026      0.001     -4.267      0.000      -0.004      -0.001
+global_pc6_dm                                                       -0.0009      0.001     -1.412      0.158      -0.002       0.000
+global_pc7_dm                                                       -0.0012      0.001     -1.502      0.133      -0.003       0.000
+global_pc8_dm                                                       -0.0008      0.001     -1.065      0.287      -0.002       0.001
+global_pc9_dm                                                       -0.0007      0.001     -1.309      0.191      -0.002       0.000
+global_pc10_dm                                                       0.0028      0.001      4.205      0.000       0.002       0.004
+global_pc11_dm                                                       0.0015      0.001      2.423      0.015       0.000       0.003
+global_pc12_dm                                                   -7.581e-05      0.001     -0.124      0.901      -0.001       0.001
+global_pc13_dm                                                    7.806e-06      0.001      0.013      0.990      -0.001       0.001
+global_pc14_dm                                                       0.0006      0.001      0.955      0.339      -0.001       0.002
+global_pc15_dm                                                      -0.0011      0.001     -2.114      0.034      -0.002   -8.25e-05
+global_pc16_dm                                                       0.0005      0.001      0.714      0.476      -0.001       0.002
+global_pc17_dm                                                      -0.0015      0.001     -2.376      0.018      -0.003      -0.000
+==============================================================================
+Omnibus:                      109.004   Durbin-Watson:                   1.753
+Prob(Omnibus):                  0.000   Jarque-Bera (JB):              275.370
+Skew:                          -0.079   Prob(JB):                     1.60e-60
+Kurtosis:                       4.354   Cond. No.                         46.8
+==============================================================================
+
+Notes:
+[1] Standard Errors are robust to cluster correlation (cluster)
+
+[C2b] Constituency-Level WLS Gap Regression
+  Dependent variable : gap  (total early Dem share − same-day Dem share)
+  Weights            : sum_people (constituency population)
+  SE correction      : HC3
+
+                            WLS Regression Results                            
+==============================================================================
+Dep. Variable:                    gap   R-squared:                       0.874
+Model:                            WLS   Adj. R-squared:                  0.855
+Method:                 Least Squares   F-statistic:                     62.37
+Date:                Wed, 25 Mar 2026   Prob (F-statistic):           4.77e-93
+Time:                        21:01:55   Log-Likelihood:                 765.25
+No. Observations:                 250   AIC:                            -1460.
+Df Residuals:                     215   BIC:                            -1337.
+Df Model:                          34                                         
+Covariance Type:                  HC3                                         
+====================================================================================================================================
+                                                                       coef    std err          z      P>|z|      [0.025      0.975]
+------------------------------------------------------------------------------------------------------------------------------------
+Intercept                                                            0.0582      0.004     15.282      0.000       0.051       0.066
+C(province_tag, Treatment('Chungbuk'))[T.Busan]                      0.0241      0.004      5.886      0.000       0.016       0.032
+C(province_tag, Treatment('Chungbuk'))[T.Chungnam]                   0.0146      0.004      3.314      0.001       0.006       0.023
+C(province_tag, Treatment('Chungbuk'))[T.Daegu]                     -0.0114      0.005     -2.361      0.018      -0.021      -0.002
+C(province_tag, Treatment('Chungbuk'))[T.Daejeon]                    0.0281      0.007      4.024      0.000       0.014       0.042
+C(province_tag, Treatment('Chungbuk'))[T.Gangwon]                    0.0071      0.005      1.523      0.128      -0.002       0.016
+C(province_tag, Treatment('Chungbuk'))[T.Gwangju]                   -0.0262      0.004     -5.860      0.000      -0.035      -0.017
+C(province_tag, Treatment('Chungbuk'))[T.Gyeongbuk]                 -0.0191      0.005     -3.829      0.000      -0.029      -0.009
+C(province_tag, Treatment('Chungbuk'))[T.Gyeonggi]                   0.0069      0.004      1.624      0.104      -0.001       0.015
+C(province_tag, Treatment('Chungbuk'))[T.Gyeongnam]                  0.0101      0.004      2.254      0.024       0.001       0.019
+C(province_tag, Treatment('Chungbuk'))[T.Incheon]                    0.0044      0.004      1.020      0.308      -0.004       0.013
+C(province_tag, Treatment('Chungbuk'))[T.Jeju]                      -0.0137      0.015     -0.887      0.375      -0.044       0.017
+C(province_tag, Treatment('Chungbuk'))[T.Jeonbuk]                   -0.0203      0.004     -4.608      0.000      -0.029      -0.012
+C(province_tag, Treatment('Chungbuk'))[T.Jeonnam]                   -0.0327      0.005     -7.115      0.000      -0.042      -0.024
+C(province_tag, Treatment('Chungbuk'))[T.Sejong]                     0.0208      0.034      0.620      0.535      -0.045       0.087
+C(province_tag, Treatment('Chungbuk'))[T.Seoul (Gangnam3gu)]         0.0567      0.004     13.880      0.000       0.049       0.065
+C(province_tag, Treatment('Chungbuk'))[T.Seoul (Non-Gangnam3gu)]     0.0493      0.004     11.105      0.000       0.041       0.058
+C(province_tag, Treatment('Chungbuk'))[T.Ulsan]                      0.0073      0.005      1.510      0.131      -0.002       0.017
+global_pc1_dm                                                       -0.0008      0.001     -0.565      0.572      -0.004       0.002
+global_pc2_dm                                                       -0.0033      0.001     -2.260      0.024      -0.006      -0.000
+global_pc3_dm                                                       -0.0046      0.001     -3.800      0.000      -0.007      -0.002
+global_pc4_dm                                                       -0.0002      0.001     -0.112      0.911      -0.003       0.003
+global_pc5_dm                                                       -0.0043      0.001     -3.775      0.000      -0.007      -0.002
+global_pc6_dm                                                       -0.0008      0.001     -0.689      0.491      -0.003       0.002
+global_pc7_dm                                                       -0.0013      0.001     -0.963      0.335      -0.004       0.001
+global_pc8_dm                                                        0.0002      0.001      0.161      0.872      -0.002       0.002
+global_pc9_dm                                                       -0.0001      0.002     -0.075      0.940      -0.004       0.003
+global_pc10_dm                                                      -0.0002      0.001     -0.167      0.867      -0.003       0.003
+global_pc11_dm                                                      -0.0015      0.001     -0.985      0.325      -0.004       0.001
+global_pc12_dm                                                       0.0034      0.001      2.319      0.020       0.001       0.006
+global_pc13_dm                                                       0.0009      0.001      0.765      0.444      -0.001       0.003
+global_pc14_dm                                                      -0.0016      0.001     -1.558      0.119      -0.004       0.000
+global_pc15_dm                                                      -0.0037      0.001     -2.776      0.006      -0.006      -0.001
+global_pc16_dm                                                      -0.0009      0.001     -0.855      0.393      -0.003       0.001
+global_pc17_dm                                                      -0.0025      0.001     -2.067      0.039      -0.005      -0.000
+==============================================================================
+Omnibus:                       15.704   Durbin-Watson:                   2.082
+Prob(Omnibus):                  0.000   Jarque-Bera (JB):               34.269
+Skew:                           0.257   Prob(JB):                     3.62e-08
+Kurtosis:                       4.739   Cond. No.                         34.4
+==============================================================================
+
+Notes:
+[1] Standard Errors are heteroscedasticity robust (HC3)
+
+[C3] Propensity Score Matching — Average Treatment Effect on the Treated (ATT)
+  ── Setup ──
+  Treatment (D=1): Dongs where in-precinct early total > 3,036 votes (median)
+  Control  (D=0): Dongs at or below the median early-vote volume.
+  Matching vars : Global PCs (Demographics + Wealth), province FE.
+  Outcome       : Total Democratic vote share (in-precinct early + same-day combined).
+
+  ── Results ──
+  Treated Dem vote share (high-early dongs) : 48.53%
+  Matched control share (propensity-matched) : 44.05%
+  Estimated ATT                              : +4.47%
+
+  ── Interpretation in relation to regression [C1] and [C8] ──
+  WLS regression [C1] estimates the conditional ATE of covariates on the
+  early-vs-same-day gap, assuming a linear functional form. It answers:
+  'Holding all other covariates constant, how does each unit shift in, e.g.,
+  Global PC1 change the gap?'  Regression coefficients are marginal effects,
+  estimated across the full covariate distribution.
+
+  PSM-ATT asks a fundamentally different counterfactual: 'For precincts that
+  actually experienced ABOVE-MEDIAN early-voting volume (the treated group),
+  what would their Democratic vote share have been if they had instead had
+  BELOW-MEDIAN volume, conditional on having the same propensity to be high-
+  volume (i.e. same observable characteristics)?'
+
+  PSM [C3] controls non-parametrically through nearest-neighbour matching on
+  the propensity score, making no linearity assumption. It also focuses
+  specifically on the treated sample (ATT), rather than averaging over all
+  dongs (ATE as in regression).
+
+  Convergence check:
+    Regression-implied mean fitted gap (from [C1]) : +7.00%
+    PSM ATT on total vote share                    : +4.47%
+  These measure different estimands (gap vs total share; ATE vs ATT), so
+  direct numerical comparison is not meaningful. However, if both imply
+  a large, consistent, demographically-unexplained Democratic premium in
+  high-early-volume precincts, that would warrant further scrutiny.
+  If the ATT is small relative to the raw gap, observable covariates
+  (demographics, wealth, urbanisation) largely account for the pattern.
+
+[C4] Fraud vs. Mobilization Diagnostic (WLS Variance Analysis)
+  Raw Mean Gap                       : +7.07%
+  Covariate Explained Variance R²    : 54.15%
+  Unexplained Variance               : 45.85%
+
+[C6] Anomaly Profiling: Top 8 Dongs by Absolute Unexplained Residual (Pop > 2,000)
+  Region           Dong             Raw Gap    Fitted  Residual
+  Chungnam 천안시동남구  성남면               +20.56%     +8.08%    +12.48%
+  Chungnam 홍성군     홍동면               +20.81%     +8.36%    +12.45%
+  Gangwon 춘천시      신동면               +20.39%     +8.16%    +12.23%
+  Busan 금정구        선두구동              +20.80%     +8.75%    +12.05%
+  Gangwon 삼척시      정라동                -4.57%     +7.09%    -11.67%
+  Gangwon 원주시      판부면               +18.83%     +8.35%    +10.48%
+  Gyeongbuk 구미시    지산동               +13.86%     +3.75%    +10.11%
+  Gyeonggi 평택시     현덕면               +16.72%     +7.35%     +9.37%
+
+[C7] Isolation Forest Multivariate Anomaly Detection
+  Isolated 36 extreme multivariate anomalies across 20 dimensions.
+  These precincts exhibit statistically implausible feature combinations.
+
+  Top 5 anomalies by absolute gap:
+  Region           Dong             Raw Gap   Turnout Dem Share
+  Gyeonggi 파주시     월롱면               +16.14%      70.9%      46.7%
+  Seoul (Non-Gang  화양동                +9.82%      71.7%      46.3%
+  Seoul (Non-Gang  신림동                +9.54%      70.1%      49.7%
+  Seoul (Non-Gang  남영동                +9.42%      69.4%      47.5%
+  Seoul (Non-Gang  사근동                +8.76%      73.4%      43.4%
+
+============================================================
+  [C8] Total Dem Vote Share Regression
+  Dependent variable : vote_share  (early + same-day Dem / total votes)
+  Same covariates as Gap model [C1].
+============================================================
+
+                            WLS Regression Results                            
+==============================================================================
+Dep. Variable:             vote_share   R-squared:                       0.935
+Model:                            WLS   Adj. R-squared:                  0.934
+Method:                 Least Squares   F-statistic:                     521.8
+Date:                Wed, 25 Mar 2026   Prob (F-statistic):          3.12e-196
+Time:                        21:01:56   Log-Likelihood:                 5694.9
+No. Observations:                3556   AIC:                        -1.132e+04
+Df Residuals:                    3521   BIC:                        -1.110e+04
+Df Model:                          34                                         
+Covariance Type:              cluster                                         
+====================================================================================================================================
+                                                                       coef    std err          z      P>|z|      [0.025      0.975]
+------------------------------------------------------------------------------------------------------------------------------------
+Intercept                                                            0.4259      0.004    104.201      0.000       0.418       0.434
+C(province_tag, Treatment('Chungbuk'))[T.Busan]                     -0.0470      0.005     -8.884      0.000      -0.057      -0.037
+C(province_tag, Treatment('Chungbuk'))[T.Chungnam]                  -0.0066      0.007     -1.015      0.310      -0.019       0.006
+C(province_tag, Treatment('Chungbuk'))[T.Daegu]                     -0.2122      0.006    -33.847      0.000      -0.224      -0.200
+C(province_tag, Treatment('Chungbuk'))[T.Daejeon]                    0.0357      0.005      7.540      0.000       0.026       0.045
+C(province_tag, Treatment('Chungbuk'))[T.Gangwon]                   -0.0285      0.007     -4.002      0.000      -0.042      -0.015
+C(province_tag, Treatment('Chungbuk'))[T.Gwangju]                    0.4125      0.007     62.125      0.000       0.399       0.425
+C(province_tag, Treatment('Chungbuk'))[T.Gyeongbuk]                 -0.2199      0.009    -23.188      0.000      -0.239      -0.201
+C(province_tag, Treatment('Chungbuk'))[T.Gyeonggi]                   0.0744      0.007     11.419      0.000       0.062       0.087
+C(province_tag, Treatment('Chungbuk'))[T.Gyeongnam]                 -0.0871      0.011     -8.266      0.000      -0.108      -0.066
+C(province_tag, Treatment('Chungbuk'))[T.Incheon]                    0.0507      0.008      6.422      0.000       0.035       0.066
+C(province_tag, Treatment('Chungbuk'))[T.Jeju]                       0.0924      0.006     15.521      0.000       0.081       0.104
+C(province_tag, Treatment('Chungbuk'))[T.Jeonbuk]                    0.3761      0.011     34.880      0.000       0.355       0.397
+C(province_tag, Treatment('Chungbuk'))[T.Jeonnam]                    0.4120      0.010     43.330      0.000       0.393       0.431
+C(province_tag, Treatment('Chungbuk'))[T.Sejong]                     0.0791      0.004     20.202      0.000       0.071       0.087
+C(province_tag, Treatment('Chungbuk'))[T.Seoul (Gangnam3gu)]        -0.0758      0.026     -2.896      0.004      -0.127      -0.024
+C(province_tag, Treatment('Chungbuk'))[T.Seoul (Non-Gangnam3gu)]     0.0543      0.006      8.840      0.000       0.042       0.066
+C(province_tag, Treatment('Chungbuk'))[T.Ulsan]                     -0.0245      0.012     -2.084      0.037      -0.047      -0.001
+global_pc1_dm                                                       -0.0218      0.004     -5.319      0.000      -0.030      -0.014
+global_pc2_dm                                                        0.0066      0.002      2.870      0.004       0.002       0.011
+global_pc3_dm                                                        0.0075      0.002      3.791      0.000       0.004       0.011
+global_pc4_dm                                                        0.0024      0.003      0.801      0.423      -0.003       0.008
+global_pc5_dm                                                        0.0044      0.002      2.031      0.042       0.000       0.009
+global_pc6_dm                                                        0.0016      0.002      0.697      0.486      -0.003       0.006
+global_pc7_dm                                                       -0.0098      0.002     -4.665      0.000      -0.014      -0.006
+global_pc8_dm                                                       -0.0077      0.002     -3.424      0.001      -0.012      -0.003
+global_pc9_dm                                                        0.0012      0.002      0.697      0.486      -0.002       0.004
+global_pc10_dm                                                       0.0019      0.002      0.994      0.320      -0.002       0.006
+global_pc11_dm                                                       0.0023      0.002      1.288      0.198      -0.001       0.006
+global_pc12_dm                                                      -0.0032      0.002     -1.677      0.093      -0.007       0.001
+global_pc13_dm                                                      -0.0001      0.002     -0.083      0.934      -0.004       0.003
+global_pc14_dm                                                       0.0018      0.002      0.839      0.402      -0.002       0.006
+global_pc15_dm                                                      -0.0006      0.002     -0.328      0.743      -0.004       0.003
+global_pc16_dm                                                      -0.0012      0.003     -0.457      0.648      -0.007       0.004
+global_pc17_dm                                                    5.699e-06      0.002      0.003      0.998      -0.004       0.004
+==============================================================================
+Omnibus:                      558.227   Durbin-Watson:                   1.100
+Prob(Omnibus):                  0.000   Jarque-Bera (JB):             3872.248
+Skew:                          -0.557   Prob(JB):                         0.00
+Kurtosis:                       7.989   Cond. No.                         38.0
+==============================================================================
+
+Notes:
+[1] Standard Errors are robust to cluster correlation (cluster)
+
+  ── What do these Global PCs mean for Vote Share? ──
+  global_pc1_dm   (Coef: -0.0218 *** ) -> Pos: [pct_f_70plus, occ_nonwage_share, ind_agriculture, pct_m_70plus] | Neg: [occ_wage_share, occ_regular_share, job_clerical, pct_f_3034]
+  global_pc2_dm   (Coef: +0.0066 **  ) -> Pos: [emp_men_total, emp_men_5064, emp_men_3049, pct_m_4549] | Neg: [job_service_sales, pct_f_6064, pct_f_6569, ind_retail_food]
+  global_pc3_dm   (Coef: +0.0075 *** ) -> Pos: [job_skilled_machine, ind_manufacturing, nonp_middle_share, pct_m_5559] | Neg: [emp_wmn_3049, nonp_male_share, log_apt_price, pct_f_2529]
+  global_pc4_dm   (Coef: +0.0024 n.s.) -> Pos: [nonp_male_share, job_simple_labor, job_service_sales, pct_m_5054] | Neg: [emp_wmn_1529, emp_men_1529, log_apt_price, emp_men_3049]
+  global_pc5_dm   (Coef: +0.0044 *   ) -> Pos: [job_simple_labor, pct_m_3034, job_skilled_machine, pct_m_3539] | Neg: [pct_m_5054, pct_f_5054, pct_f_5559, job_professional]
+  global_pc6_dm   (Coef: +0.0016 n.s.) -> Pos: [emp_men_1529, emp_wmn_1529, job_simple_labor, pct_f_5559] | Neg: [nonp_young_share, ind_manufacturing, pct_m_4044, pct_f_70plus]
+  global_pc7_dm   (Coef: -0.0098 *** ) -> Pos: [nonp_young_share, pct_m_2529, emp_men_3049, emp_men_5064] | Neg: [pct_m_4044, pct_f_4044, pct_m_4549, emp_men_1529]
+  global_pc8_dm   (Coef: -0.0077 *** ) -> Pos: [emp_men_3049, job_simple_labor, ind_services, ind_construction] | Neg: [pct_m_2529, pct_f_5559, pct_f_2529, ind_manufacturing]
+  global_pc9_dm   (Coef: +0.0012 n.s.) -> Pos: [pct_f_5559, pct_f_6064, pct_f_3539, pct_m_3539] | Neg: [pct_m_5054, pct_f_70plus, pct_f_1824, pct_m_70plus]
+  global_pc10_dm  (Coef: +0.0019 n.s.) -> Pos: [nonp_male_share, nonp_young_share, pct_m_5559, emp_wmn_3049] | Neg: [ind_construction, pct_m_1824, pct_f_1824, emp_men_3049]
+  global_pc11_dm  (Coef: +0.0023 n.s.) -> Pos: [ind_construction, pct_m_5559, ind_retail_food, pct_m_5054] | Neg: [job_simple_labor, ind_manufacturing, emp_men_1529, emp_wmn_3049]
+  global_pc12_dm  (Coef: -0.0032 n.s.) -> Pos: [emp_wmn_1529, ind_construction, nonp_male_share, nonp_young_share] | Neg: [ind_services, pct_m_5559, job_simple_labor, pct_m_3034]
+  global_pc13_dm  (Coef: -0.0001 n.s.) -> Pos: [nonp_middle_share, ind_retail_food, job_service_sales, emp_men_5064] | Neg: [ind_construction, emp_wmn_3049, emp_men_3049, pct_m_5559]
+  global_pc14_dm  (Coef: +0.0018 n.s.) -> Pos: [job_service_sales, emp_men_3049, ind_retail_food, emp_wmn_3049] | Neg: [job_simple_labor, ind_construction, ind_services, nonp_middle_share]
+  global_pc15_dm  (Coef: -0.0006 n.s.) -> Pos: [pct_f_6064, pct_m_2529, pct_f_6569, pct_m_4549] | Neg: [nonp_young_share, pct_f_70plus, pct_m_5559, ind_retail_food]
+  global_pc16_dm  (Coef: -0.0012 n.s.) -> Pos: [log_apt_price, job_simple_labor, emp_men_5064, emp_wmn_1529] | Neg: [emp_men_1529, ind_services, nonp_middle_share, pct_f_5559]
+  global_pc17_dm  (Coef: +0.0000 n.s.) -> Pos: [emp_men_1529, nonp_young_share, ind_transport_finance, ind_construction] | Neg: [emp_wmn_1529, emp_men_3049, pct_f_5054, ind_services]
