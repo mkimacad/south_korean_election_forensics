@@ -1,0 +1,177 @@
+======================================================================
+  ELECTION FORENSICS REPORT: 21st General Election (2020)
+======================================================================
+
+[ SECTION 1: FORENSICS SUITE  (F1–F10) ]
+
+
+--- Forensics Suite ---
+
+  ── Variable Definitions ──
+  early_pct    = in_precinct_early_dem ÷ in_precinct_early_total
+                 The Democratic candidate's vote share among all valid ballots
+                 cast at in-precinct early-voting stations (관내사전투표소).
+  sameday_pct  = same_day_dem ÷ same_day_total
+                 The Democratic share among voters who showed up on election day
+                 (당일투표), the conventional voting mode.
+  gap          = early_pct − sameday_pct
+  vote_share   = (in_precinct_early_dem + same_day_dem + allocated_out_precinct_dem) ÷
+                 (in_precinct_early_total + same_day_total + allocated_out_precinct_total)
+                 Combined Democratic share across all voting modes (Dong level).
+                 Out-of-precinct early votes are proportionally allocated to dongs.
+  turnout      = (sum_vote_geo + allocated_out_precinct_turnout) ÷
+                 (sum_people + allocated_out_precinct_turnout)
+                 Official turnout rate. Out-of-precinct ballots and electors
+                 are proportionally allocated to accurately reflect Dong turnout.
+
+============================================================
+  [F1] Second-Digit Benford's Law (2BL) — Nationwide Naive Test
+  NOTE: Uses conventional χ²(9). See [F7d] for simulation-adjusted metro result.
+============================================================
+  N (votes >= 10)      : 3,480
+  Chi-Square Statistic : 9.4149
+  p-value              : 0.3999  (df=9)
+  Result: PASS
+
+  Observed vs Expected (digits 0–9):
+    digit 0: obs=  409  exp=  416.5
+    digit 1: obs=  389  exp=  396.3
+    digit 2: obs=  383  exp=  378.7
+    digit 3: obs=  365  exp=  363.1
+    digit 4: obs=  346  exp=  349.1
+    digit 5: obs=  339  exp=  336.4
+    digit 6: obs=  334  exp=  324.9
+    digit 7: obs=  357  exp=  314.4
+    digit 8: obs=  282  exp=  304.7
+    digit 9: obs=  276  exp=  295.8
+
+============================================================
+  [F2] Last-Digit Uniformity Test (Three-Series Comparative)
+============================================================
+  [in_precinct_early_dem  (early, DEM)]  N=3,480  χ²=6.14  p=0.7255  Cramér's V=0.0140  PASS
+  [in_precinct_early_con  (early, CON)]  N=3,450  χ²=9.63  p=0.3813  Cramér's V=0.0176  PASS
+  [same_day_dem   (sameday, DEM)]  N=3,480  χ²=9.51  p=0.3915  Cramér's V=0.0174  PASS
+
+  Binomial simulation null (using actual in_precinct_early_total & p_dem per dong):
+  Simulated χ²=13.79 (p=0.1301) vs Actual χ²=6.14 (p=0.7255)
+
+============================================================
+  [F3] Vote-Share Variance (Inter-Neighbourhood Dispersion)
+============================================================
+  Mean within-city std of dem vote share: 5.03%
+
+============================================================
+  [F5] Invalid Vote Analysis
+============================================================
+  N stations        : 17,799
+  Pearson r (invalid rate ↔ dem share): -0.0387  (p=0.0000)
+  Result: Near-zero — no weaponized invalid ballot signal.
+
+============================================================
+  [F6] Regional Aggregate Analysis (Metropolitan Two-Party Ratio)
+============================================================
+    Gyeonggi    : 55.94% vs 44.06%  (n=3,731 stations)
+    Incheon     : 56.80% vs 43.20%  (n=871 stations)
+    Seoul (Gangnam3gu): 43.77% vs 56.23%  (n=425 stations)
+    Seoul (Non-Gangnam3gu): 57.39% vs 42.61%  (n=2,251 stations)
+  Micro std of two-party dem share across metro stations: 11.06%
+
+============================================================
+  [F7] Metro Early-Voting Digit Tests & 63:37 Ratio Hypothesis
+  (Seoul / Incheon / Gyeonggi – in-precinct early votes only)
+============================================================
+
+  [F7a] Naive 2BL – Metro in_precinct_early_dem (N=1,123 precincts)
+  NOTE: Naive χ²(9) test only. See [F7d] for simulation-adjusted result.
+  N (votes >= 10)      : 1,123
+  Chi-Square Statistic : 16.4965
+  p-value              : 0.0572  (df=9)
+  Result: PASS
+
+  Scale-Range Comparison (Fewster 2009):
+    Nationwide [F1] range : 24 – 11,483 (2.68 orders of magnitude)
+    Metro [F7a] range      : 41 – 11,483 (2.45 orders of magnitude)
+
+  Shikano & Mack (2011) Homogeneity Diagnostic:
+  NOTE: S&M thresholds calibrated for station-level counts (~50–500 votes).
+  This analysis uses Dong-level aggregates (mode ~1986 votes).
+    Approx. mode of metro vote-count distribution : 1986 votes
+    KDE max density (homogeneity proxy)            : 0.00035
+    S&M station-level conditions (for reference):
+      (1) mode ∈ [80, 190]  → NO
+      (2) KDE max > 0.01    → NO
+  Neither S&M station-level condition met (expected at Dong aggregation).
+  Simulation-adjusted result [F7d] is the primary forensic indicator.
+
+  [F7b] Last-Digit – Metro in_precinct_early_dem
+  N (votes, len >= 2)  : 1,123
+  Chi-Square Statistic : 13.1621
+  p-value              : 0.1554  (df=9)
+  Result: PASS
+
+  [F7c] Early-Only Two-Party Ratio (in-precinct early, 63:37 hypothesis)
+  Macro early-voting two-party ratios (Dem vs Con):
+    Gyeonggi              : 63.27% vs 36.73%  (n=545 early stations)
+    Incheon               : 63.07% vs 36.93%  (n=154 early stations)
+    Seoul (Gangnam3gu)    : 53.37% vs 46.63%  (n=67 early stations)
+    Seoul (Non-Gangnam3gu): 65.48% vs 34.52%  (n=357 early stations)
+    -------------------------------------------------------
+    Seoul (Combined Total): 63.48% vs 36.52%  (n=424 early stations)
+
+  Micro std of early two-party dem share across metro stations: 9.14%
+  HIGH micro std alongside any macro convergence → LLN, not top-down fixing.
+  LOW micro std (<2%) with near-63:37 macro → supports fixed-ratio hypothesis.
+
+  [F7d] Simulation-Adjusted 2BL Per Metro Constituency (S&M 2011)
+  Unit: dongs within each constituency  |  Simulations: 500  |  df_t=5
+  Metro constituencies analysed    : 114
+  With valid simulation results    : 114
+  Exceeding sim-adjusted threshold : 9 (7.9%)  (expected ~5%)
+  Result: FAIL — more rejections than chance predicts. Warrants review.
+
+  Top 10 constituencies by chi2_trans:
+  Province               Constituency           emp_χ²   sim95  trans_χ² n_dongs
+  Gyeonggi               시흥시을                    32.40   21.65     25.29 ★  (n=8)
+  Seoul (Non-Gangnam3gu) 동대문구갑                   22.59   16.62     22.98 ★  (n=8)
+  Gyeonggi               성남시분당구을                 17.65   14.47     20.60 ★  (n=11)
+  Seoul (Gangnam3gu)     강남구을                    17.27   15.74     18.54 ★  (n=8)
+  Gyeonggi               김포시을                    17.79   16.80     17.90 ★  (n=9)
+  Gyeonggi               광주시갑                    16.22   15.71     17.44 ★  (n=6)
+  Incheon                계양구갑                    18.60   18.10     17.36 ★  (n=5)
+  Incheon                동구미추홀구을                 17.21   16.76     17.35 ★  (n=11)
+  Incheon                중구강화군옹진군                16.40   16.24     17.06 ★  (n=32)
+  Gyeonggi               안산시단원구을                 16.61   16.62     16.88  (n=5)
+
+============================================================
+  [F8] Beber & Scacco '0s and 5s' Test (Human Fabrication Signature)
+============================================================
+  Observed 0s/5s frequency : 19.48%  (Expected: 20.00%)
+  Z-Statistic              : -0.7628
+  p-value                  : 4.4557e-01
+  Result: PASS – No significant human preference for 0s and 5s.
+
+============================================================
+  [F9] Beber & Scacco Mean & Variance of Last Digits
+============================================================
+  Observed Mean     : 4.4681  (Expected: 4.5)
+  Observed Variance : 8.2772   (Expected: 8.25)
+  Mean Z-Statistic  : -0.6551  (p=5.1240e-01)
+  Result: PASS – Last digit mean conforms to uniform distribution.
+
+============================================================
+  [F10] Klimek et al. Mixture Modeling (Election Fingerprint)
+  NOTE: Fraud signal = HIGH TURNOUT + HIGH VOTE SHARE simultaneously.
+  A cluster extreme only in vote share at normal turnout is geographic.
+============================================================
+  BIC-selected n_components: 4  (BIC=-13647.1)
+  Identified Clusters (Turnout %, Dem Vote Share %):
+    Cluster 1: Weight=39.2%  Turnout=66.6%  VoteShare=54.5%
+             → Geographic/Partisan — swing or mixed region
+    Cluster 2: Weight=30.6%  Turnout=67.5%  VoteShare=40.8%
+             → Geographic/Partisan — Yeongnam region (Busan dominant)
+    Cluster 3: Weight=17.2%  Turnout=69.6%  VoteShare=22.0%
+             → Geographic/Partisan — Yeongnam region (Gyeongbuk dominant)
+    Cluster 4: Weight=12.9%  Turnout=67.5%  VoteShare=72.8%
+             → Geographic/Partisan — Honam region (Jeonnam dominant)
+  Result: No cluster meets the Klimek joint fraud criterion.
+          Cluster separation is explained by regional partisanship.
