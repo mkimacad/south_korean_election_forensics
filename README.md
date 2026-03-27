@@ -1,11 +1,31 @@
 # southkorea_election
 South Korean election forensics
 
-The main file: korean_election_forensics.ipynb
+==========
 
-Detailed results in test_diagnostics.txt
+Code information:
 
-Manuscript: south_korean_election_forensic.pdf
+The main forensic file: korean_election_forensics.ipynb
+
+The main regression file: korean_election_regressions.ipynb
+
+Required data files (./ as the working directory where the python or jupyter notebook files are at):
+
+place processed_apt_data_*.csv files into ./output_data directory
+
+place other csv data into ./: stations_normal_*.csv files, industry_employment_data.csv, men_employment_data.csv, non_participant_employment_data.csv, occupation_employment_data.csv, occupation_type_employment_data.csv, women_employment_data.csv and all *_census.csv and *_result.csv files.
+
+==========
+
+Regression results:
+
+See comprehensive_regression_logs_*.txt files. The regression results used in the manuscript have no turnout covariate in democratic vote share regressions - this is the baseline we use.
+
+==========
+
+Manuscript (completely outdated, to be updated): south_korean_election_forensic.pdf
+
+==========
 
 The census data (csv files) are from https://www.data.go.kr/data/3033304/fileData.do (official Korean government census data), which directs to https://jumin.mois.go.kr/ageStatMonth.do .
 
