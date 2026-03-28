@@ -1,11 +1,15 @@
 # southkorea_election
 South Korean election forensics
 
+Minseong Kim
+
+(Since I decided to break out of anonymity, I am cloning this repo to my academic github repo.)
+
 ==========
 
 Code information:
 
-The main forensic file (outdated, to be updated/simplified so that regressions are solely done in the regression file):
+The main forensic file (run concurrently with the regression file):
 
 korean_election_forensics.ipynb
 
@@ -31,7 +35,7 @@ The regression results used in the manuscript have no turnout covariate in democ
 
 ==========
 
-Manuscript (completely outdated, to be updated): south_korean_election_forensic.pdf
+Manuscript: south_korean_election_forensic.pdf
 
 ==========
 
