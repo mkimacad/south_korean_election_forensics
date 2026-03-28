@@ -357,7 +357,7 @@
                 if (hostname.includes('github.io')) {
                     const parts = hostname.split('.');
                     const username = parts[0];
-                    return `${username}/${username}.github.io`;
+                    return `${username}`;
                 }
             } catch (e) {
                 // If we can't access parent (CORS), try current window
@@ -365,7 +365,7 @@
                 if (hostname.includes('github.io')) {
                     const parts = hostname.split('.');
                     const username = parts[0];
-                    return `${username}/${username}.github.io`;
+                    return `${username}`;
                 }
             }
             return '';
