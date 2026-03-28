@@ -1,0 +1,19 @@
+header: Demography, Early Voting, and Election Integrity in South Korea
+This repository contains the replication code, data, and supplementary materials for the manuscript "Demography, Early Voting, and Election Integrity in South Korea: Evidence Across Four Electoral Cycles" by Minseong Kim. 
+
+header: Overview
+Following the introduction of nationwide early voting in South Korea in 2013, early ballots have consistently returned higher Democratic Party vote shares than same-day ballots. This divergence has sparked persistent allegations of systematic electoral fraud. This project assesses these claims using a unified empirical framework applied to four major elections spanning 2020 to 2025: the 21st and 22nd General Elections (2020, 2024) and the 20th and 21st Presidential Elections (2022, 2025).
+
+header: Methodology
+The research investigates the generative process behind early and same-day ballots using two complementary analytical strategies:
+- Forensic Statistical Tests: Application of simulation-adjusted second-digit Benford's law, last-digit uniformity tests, mixture-model fingerprinting, and scrutiny of the widely circulated "63:37" early-vote ratio claim.
+- Sociodemographic Regression Analysis: Population-weighted least squares regression at the sub-district (dong) level. This models vote shares using principal components derived from 51 census, employment, and housing variables. For the three-candidate 2025 presidential election, an instrumental-variable (IV-2SLS) approach uses the 2017 vote share of Yoo Seung-min to isolate the causal effect of third-party vote diversion.
+
+header: Key Findings
+- No Systemic Fraud: Forensic tests reveal no systematic pattern of large-scale ballot manipulation across the 11,436 dong-election observations in the four analyzed cycles.
+- Demographics Explain the Gap: Sub-district sociodemographic characteristics explain 73% to 94% of the geographic variation in vote shares. The predictors perform equally well for both early votes and same-day votes, indicating that the early-voting divergence is driven by demographic sorting (who votes early) rather than counting manipulation.
+- The "63:37" Claim is Unsupported: Early-voting two-party ratios vary substantially across different elections. While the ratio was approximately 63% in metropolitan areas in 2020, it dropped to 53%–59% in 2022, and rose to 72%–73.7% in 2025. Furthermore, the micro-level standard deviation across precincts is large (between 6.4 and 9.1 percentage points), refuting the existence of a fixed mathematical algorithm. 
+- 2022 Anomaly: A candidate-specific last-digit anomaly was flagged in the 2022 presidential election. While it warrants further scrutiny, the magnitude of the deviation is small (Cramer's V = 0.028) and does not invalidate the broader demographic findings.
+
+header: Repository Contents
+In accordance with the manuscript's data availability statement, this repository provides the full forensic and regression results, alongside the necessary scripts and aggregated data to reproduce the findings.
