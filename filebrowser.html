@@ -305,7 +305,7 @@
         <div class="github-note">
             <strong>Auto-Loading:</strong> This file browser automatically detects and loads your GitHub repository contents. For manual loading, enter a repository in the format: username/repository-name
         </div>
-    
+        
         <div class="controls">
             <input type="text" id="repoInput" placeholder="username/repository-name" value="">
             <button onclick="loadRepository()">Load Repository</button>
@@ -329,7 +329,6 @@
             This folder is empty
         </div>
         
-        <!-- File Preview Modal -->
         <div id="fileModal" class="modal">
             <div class="modal-content">
                 <div class="modal-header">
@@ -347,49 +346,58 @@
         let pathHistory = [];
         let currentFiles = [];
         
-        // Try to auto-detect repository from parent window URL
-        function getCurrentRepo() {
-            try {
-                // Try to get parent window location
-                const parentLocation = window.parent.location;
-                const hostname = parentLocation.hostname;
+        // Helper function to extract info from location object
+        function extractRepoInfo(loc) {
+            const hostname = loc.hostname;
+            const pathname = loc.pathname;
+            
+            if (hostname.includes('github.io')) {
+                const username = hostname.split('.')[0];
+                const pathSegments = pathname.replace(/^\/+|\/+$/g, '').split('/').filter(Boolean);
                 
-                if (hostname.includes('github.io')) {
-                    const parts = hostname.split('.');
-                    const username = parts[0];
-                    return `${username}`;
-                }
-            } catch (e) {
-                // If we can't access parent (CORS), try current window
-                const hostname = window.location.hostname;
-                if (hostname.includes('github.io')) {
-                    const parts = hostname.split('.');
-                    const username = parts[0];
-                    return `${username}`;
+                // For typical GitHub Pages (username.github.io/repo-name)
+                if (pathSegments.length > 0) {
+                    return `${username}/${pathSegments[0]}`;
+                } else {
+                    // Fallback for root repositories (username.github.io)
+                    return `${username}/${username}.github.io`;
                 }
             }
             return '';
+        }
+
+        function extractPathInfo(loc) {
+            const hostname = loc.hostname;
+            const pathname = loc.pathname;
+            
+            if (hostname.includes('github.io')) {
+                const pathSegments = pathname.replace(/^\/+|\/+$/g, '').split('/').filter(Boolean);
+                
+                // The first segment is the repo name, so remove it to get internal path
+                if (pathSegments.length > 0) {
+                    pathSegments.shift();
+                }
+                return pathSegments.join('/');
+            }
+            return '';
+        }
+
+        // Try to auto-detect repository from URL
+        function getCurrentRepo() {
+            try {
+                return extractRepoInfo(window.parent.location);
+            } catch (e) {
+                return extractRepoInfo(window.location);
+            }
         }
         
         // Get the initial path within the repository
         function getInitialPath() {
             try {
-                const parentLocation = window.parent.location;
-                const pathname = parentLocation.pathname;
-                
-                if (parentLocation.hostname.includes('github.io')) {
-                    const pathSegments = pathname.replace(/^\/+|\/+$/g, '').split('/').filter(segment => segment);
-                    return pathSegments.length > 0 ? pathSegments.join('/') : '';
-                }
+                return extractPathInfo(window.parent.location);
             } catch (e) {
-                // Fallback to current window
-                const pathname = window.location.pathname;
-                if (window.location.hostname.includes('github.io')) {
-                    const pathSegments = pathname.replace(/^\/+|\/+$/g, '').split('/').filter(segment => segment);
-                    return pathSegments.length > 0 ? pathSegments.join('/') : '';
-                }
+                return extractPathInfo(window.location);
             }
-            return '';
         }
         
         function loadCurrentRepo() {
@@ -442,30 +450,14 @@
         function getFileExtension(filename) {
             const ext = filename.split('.').pop().toLowerCase();
             const typeMap = {
-                'js': 'JavaScript',
-                'ts': 'TypeScript',
-                'html': 'HTML',
-                'css': 'CSS',
-                'py': 'Python',
-                'java': 'Java',
-                'cpp': 'C++',
-                'c': 'C',
-                'php': 'PHP',
-                'rb': 'Ruby',
-                'go': 'Go',
-                'rs': 'Rust',
-                'md': 'Markdown',
-                'json': 'JSON',
-                'xml': 'XML',
-                'yml': 'YAML',
-                'yaml': 'YAML',
-                'txt': 'Text',
-                'pdf': 'PDF',
-                'png': 'Image',
-                'jpg': 'Image',
-                'jpeg': 'Image',
-                'gif': 'Image',
-                'svg': 'SVG'
+                'js': 'JavaScript', 'ts': 'TypeScript', 'html': 'HTML',
+                'css': 'CSS', 'py': 'Python', 'java': 'Java',
+                'cpp': 'C++', 'c': 'C', 'php': 'PHP', 'rb': 'Ruby',
+                'go': 'Go', 'rs': 'Rust', 'md': 'Markdown',
+                'json': 'JSON', 'xml': 'XML', 'yml': 'YAML',
+                'yaml': 'YAML', 'txt': 'Text', 'pdf': 'PDF',
+                'png': 'Image', 'jpg': 'Image', 'jpeg': 'Image',
+                'gif': 'Image', 'svg': 'SVG'
             };
             return typeMap[ext] || ext.toUpperCase();
         }
@@ -547,7 +539,7 @@
             fileList.innerHTML = '';
             currentFiles = files || [];
             
-            if (!files || files.length === 0) {
+            if (!files || files.length === 0 || !Array.isArray(files)) {
                 emptyFolder.style.display = 'block';
                 downloadAllBtn.style.display = 'none';
                 updateStatusBar(0, 0);
@@ -558,12 +550,10 @@
                 downloadAllBtn.style.display = hasFiles ? 'inline-block' : 'none';
             }
             
-            // Count files and directories
             const fileCount = files.filter(f => f.type === 'file').length;
             const dirCount = files.filter(f => f.type === 'dir').length;
             updateStatusBar(fileCount, dirCount);
             
-            // Sort files: directories first, then files alphabetically
             files.sort((a, b) => {
                 if (a.type !== b.type) {
                     return a.type === 'dir' ? -1 : 1;
@@ -607,7 +597,6 @@
             });
         }
         
-        // Download individual file
         async function downloadFile(downloadUrl, filename) {
             try {
                 const response = await fetch(downloadUrl);
@@ -626,7 +615,6 @@
             }
         }
         
-        // Preview file content
         async function previewFile(downloadUrl, filename) {
             try {
                 const modal = document.getElementById('fileModal');
@@ -640,8 +628,7 @@
                 const response = await fetch(downloadUrl);
                 const text = await response.text();
                 
-                // Limit preview size for performance
-                const maxPreviewSize = 10000; // 10KB
+                const maxPreviewSize = 10000;
                 const previewText = text.length > maxPreviewSize 
                     ? text.substring(0, maxPreviewSize) + '\n\n... (file truncated for preview)'
                     : text;
@@ -653,12 +640,10 @@
             }
         }
         
-        // Close modal
         function closeModal() {
             document.getElementById('fileModal').style.display = 'none';
         }
         
-        // Download all files in current directory
         async function downloadAllFiles() {
             const files = currentFiles.filter(file => file.type === 'file');
             if (files.length === 0) {
@@ -676,7 +661,6 @@
                     const file = files[i];
                     downloadAllBtn.textContent = `Downloading ${i + 1}/${files.length}: ${file.name}`;
                     await downloadFile(file.download_url, file.name);
-                    // Small delay to prevent overwhelming the browser
                     await new Promise(resolve => setTimeout(resolve, 500));
                 }
             } catch (error) {
@@ -687,16 +671,13 @@
             }
         }
         
-        // Close modal when clicking outside
         window.onclick = function(event) {
             const modal = document.getElementById('fileModal');
-            
             if (event.target === modal) {
                 closeModal();
             }
         }
         
-        // Try to auto-load on page load
         window.onload = function() {
             const repo = getCurrentRepo();
             if (repo) {
@@ -708,7 +689,6 @@
             }
         };
         
-        // Handle browser back/forward buttons
         window.addEventListener('popstate', function(event) {
             if (event.state && event.state.path !== undefined) {
                 currentPath = event.state.path;
