@@ -33,3 +33,14 @@ After downloading ipynb files at ./, unzip data/regression_load.zip into ./ - th
 place repo's data/processed_apt_price_data files into ./output_data directory in jupyterlab or python environment
 
 place files in repo's data/census_data, data/election_result_data, data/employment_data, data/polling_station_count_data into ./ in Jupyterlab or python environment.
+
+header: Data sources
+The census data (csv files) are from https://www.data.go.kr/data/3033304/fileData.do (official Korean government census data), which directs to https://jumin.mois.go.kr/ageStatMonth.do .
+
+The general elction results (csv files) are from official Korean government data, https://www.data.go.kr/data/15025527/fileData.do (The presidental election results are from https://www.data.go.kr/data/15025528/fileData.do)
+
+The actual monthly housing price data are from official Korean government data, https://www.data.go.kr/data/3050988/fileData.do, which directs to https://rt.molit.go.kr/pt/xls/xls.do?mobileAt=
+
+Additional data: 시군구별 경제활동인구조사 지역별고용조사 (employment data) + GRDP data from KOSIS
+
+Polling station information data from http://data.go.kr/data/15000836/openapi.do
