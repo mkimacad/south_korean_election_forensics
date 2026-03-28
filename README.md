@@ -35,7 +35,7 @@ The regression results used in the manuscript have no turnout covariate in democ
 
 ==========
 
-Manuscript: south_korean_election_forensic.pdf
+Manuscript: manuscript/south_korean_election_forensic.pdf
 
 ==========
 
