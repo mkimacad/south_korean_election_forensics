@@ -44,3 +44,6 @@ The actual monthly housing price data are from official Korean government data, 
 Additional data: 시군구별 경제활동인구조사 지역별고용조사 (employment data) + GRDP data from KOSIS
 
 Polling station information data from http://data.go.kr/data/15000836/openapi.do
+
+header: For fun - South Korean Lottery Lotto 6/45 forensics
+https://mkimacad.github.io/korean_lotto_forensics
