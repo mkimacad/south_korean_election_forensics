@@ -5,6 +5,10 @@ Minseong Kim
 
 (Since I decided to break out of anonymity, I am cloning this repo to my academic github repo.)
 
+Some change is ongoing:
+
+I am now doing analysis that shows why the (Ferrari/Mebane) eforensics model has significant false-positive issues when fit to the Korean elections.
+
 ==========
 
 Code information:
