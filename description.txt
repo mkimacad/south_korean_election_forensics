@@ -2,6 +2,8 @@ header:WARNING - This project is undergoing significant chagnes
 I am now adding Mebane's eforensics model analysis - see the repo's results/eforensics csv files as well as the new eforensics manuscript draft.
 Mebane's model has too many false-positives and even flag elections that had no election fraud claimed. The model also claims fraud-free synthetic data are fraudalent, when they are not. 
 
+Move election result csv data in repo's data/election_result_data to the same directory of run_mebane_r_all_parallel_bidirectional.sh, mebane_crosscheck.R and mebane_r_pipeline_bidirectional.py and run run_mebane_r_all_parallel_bidirectional.sh bash code. I will give further description on package dependency soon - the obvious one is that it needs official eforensics R package from github.
+
 header: Demography, Early Voting, and Election Integrity in South Korea
 This repository contains the replication code, data, and supplementary materials for the manuscript "Demography, Early Voting, and Election Integrity in South Korea: Evidence Across Four Electoral Cycles" by Minseong Kim. 
 
