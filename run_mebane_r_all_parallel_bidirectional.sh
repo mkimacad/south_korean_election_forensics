@@ -49,14 +49,14 @@ set -e
 
 ELECTIONS="${1:-21 22 pres20 pres21 18 19 20 pres16 pres17 pres18 pres19}"
 LEVELS="${2:-dong constituency}"
-NO_EARLY="18 19 pres16 pres17 pres18 20"
+NO_EARLY="18 19 pres16 pres17 pres18"
 DONG_CHANNELS="early sameday pooled"
 CONST_CHANNELS="early early_out early_total sameday total"
 SOURCES="real marginal_null joint_null"
-LEADER_SIDES="${LEADER_SIDES:-dem}"   # space-separated subset of: dem con
+LEADER_SIDES="${LEADER_SIDES:-dem con}"   # space-separated subset of: dem con
 
 # R/JAGS fit settings
-R_N_ITER="${R_N_ITER:-5000}"
+R_N_ITER="${R_N_ITER:-3000}"
 R_N_CHAINS="${R_N_CHAINS:-4}"
 R_BURN_IN="${R_BURN_IN:-1000}"
 USE_PARCOMP="${USE_PARCOMP:-0}"   # see concurrency note above -- default OFF
