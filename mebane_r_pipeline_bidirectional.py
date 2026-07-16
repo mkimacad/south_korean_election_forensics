@@ -18,7 +18,7 @@ as leader, for the complementary direction of fraud test.
 
 Usage (single cell):
   python3 mebane_r_pipeline_bidirectional.py <elec_id> <level> <channel> <source> \\
-      [leader_side] [r_n_iter] [r_n_chains] [r_burn_in] [use_parcomp]
+      [leader_side] [r_n_iter] [r_n_chains] [r_burn_in] [use_parcomp] [r_n_adapt]
 
   leader_side: 'dem' (default) or 'con'.
 
@@ -604,7 +604,7 @@ def generate_joint_null(real_sub, seed=1):
 # R/JAGS invocation
 # ============================================================================
 
-def run_r_model(df, r_n_iter=3000, r_n_chains=4, r_burn_in=1000, use_parcomp=True, work_dir=None):
+def run_r_model(df, r_n_iter=3000, r_n_chains=4, r_burn_in=1000, use_parcomp=True, r_n_adapt=1000, work_dir=None):
     if shutil.which('Rscript') is None:
         raise FileNotFoundError("run_r_model: 'Rscript' not found on PATH.")
 
@@ -618,8 +618,10 @@ def run_r_model(df, r_n_iter=3000, r_n_chains=4, r_burn_in=1000, use_parcomp=Tru
 
     argv = ['Rscript', R_SCRIPT_PATH, input_path, output_path,
             str(r_n_iter), str(r_n_chains), str(r_burn_in),
-            'TRUE' if use_parcomp else 'FALSE']
+            'TRUE' if use_parcomp else 'FALSE', str(r_n_adapt)]
 
+    print(f"[run_r_model] MCMC settings: n_iter={r_n_iter}, n_chains={r_n_chains}, "
+          f"burn_in={r_burn_in}, n_adapt={r_n_adapt}, parComp={use_parcomp}")
     print(f"[run_r_model] {' '.join(argv)}")
     t0 = time.time()
     result = subprocess.run(argv, capture_output=True, text=True)
@@ -637,7 +639,7 @@ def run_r_model(df, r_n_iter=3000, r_n_chains=4, r_burn_in=1000, use_parcomp=Tru
 # ============================================================================
 
 def fit_one_cell(elec_id, level, channel, source, leader_side='dem', r_n_iter=3000, r_n_chains=4,
-                  r_burn_in=1000, use_parcomp=True):
+                  r_burn_in=1000, use_parcomp=True, r_n_adapt=1000):
     if leader_side not in ('dem', 'con'):
         raise ValueError(f"leader_side must be 'dem' or 'con', got '{leader_side}'")
     if level == 'dong':
@@ -658,7 +660,8 @@ def fit_one_cell(elec_id, level, channel, source, leader_side='dem', r_n_iter=30
     cell_tag = f"{elec_id}/{level}/{channel}/{source}/leader={leader_side}"
     print(f"\n{'='*70}\nCELL: {cell_tag}  N={len(df)}\n{'='*70}")
     summary, units, elapsed = run_r_model(df, r_n_iter=r_n_iter, r_n_chains=r_n_chains,
-                                           r_burn_in=r_burn_in, use_parcomp=use_parcomp)
+                                           r_burn_in=r_burn_in, use_parcomp=use_parcomp,
+                                           r_n_adapt=r_n_adapt)
 
     def g(key, default=None):
         v = summary.get(key, default)
@@ -714,6 +717,7 @@ def fit_one_cell(elec_id, level, channel, source, leader_side='dem', r_n_iter=30
                   f"difference alongside a small dip-test p-value -- signal of lost votes / model "
                   f"misspecification, not just an MCMC convergence problem. ***")
 
+    print(f"n_adapt                : {r_n_adapt}")
     print(f"elapsed_seconds        : {elapsed:.1f}")
     print(f"\nEND: {cell_tag}")
     return summary, units
@@ -722,7 +726,7 @@ def fit_one_cell(elec_id, level, channel, source, leader_side='dem', r_n_iter=30
 if __name__ == '__main__':
     if len(sys.argv) < 5:
         print("Usage: mebane_r_pipeline_bidirectional.py <elec_id> <level> <channel> <source> "
-              "[leader_side] [r_n_iter] [r_n_chains] [r_burn_in] [use_parcomp]")
+              "[leader_side] [r_n_iter] [r_n_chains] [r_burn_in] [use_parcomp] [r_n_adapt]")
         print("  leader_side: 'dem' (default) or 'con'")
         sys.exit(1)
 
@@ -735,6 +739,8 @@ if __name__ == '__main__':
     r_n_chains = int(sys.argv[7]) if len(sys.argv) > 7 else 4
     r_burn_in = int(sys.argv[8]) if len(sys.argv) > 8 else 1000
     use_parcomp = bool(int(sys.argv[9])) if len(sys.argv) > 9 else True
+    r_n_adapt = int(sys.argv[10]) if len(sys.argv) > 10 else 1000
 
     fit_one_cell(elec_id, level, channel, source, leader_side=leader_side, r_n_iter=r_n_iter,
-                 r_n_chains=r_n_chains, r_burn_in=r_burn_in, use_parcomp=use_parcomp)
+                 r_n_chains=r_n_chains, r_burn_in=r_burn_in, use_parcomp=use_parcomp,
+                 r_n_adapt=r_n_adapt)

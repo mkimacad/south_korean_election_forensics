@@ -6,7 +6,7 @@
 # posterior summaries.
 #
 # Usage:
-#   Rscript mebane_crosscheck.R <input.csv> <output.csv> [n_iter] [n_chains] [burn_in] [use_parcomp]
+#   Rscript mebane_crosscheck.R <input.csv> <output.csv> [n_iter] [n_chains] [burn_in] [use_parcomp] [n_adapt]
 #
 # input.csv must contain columns: leader_votes, total_votes, eligible, prov_code
 
@@ -15,7 +15,7 @@ suppressMessages(library(coda))
 
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) < 2) {
-  stop("Usage: Rscript mebane_crosscheck.R <input.csv> <output.csv> [n_iter] [n_chains] [burn_in] [use_parcomp]")
+  stop("Usage: Rscript mebane_crosscheck.R <input.csv> <output.csv> [n_iter] [n_chains] [burn_in] [use_parcomp] [n_adapt]")
 }
 
 input_path   <- args[1]
@@ -24,6 +24,7 @@ n_iter       <- if (length(args) >= 3) as.integer(args[3]) else 3000
 n_chains     <- if (length(args) >= 4) as.integer(args[4]) else 4
 burn_in      <- if (length(args) >= 5) as.integer(args[5]) else 1000
 use_parcomp  <- if (length(args) >= 6) as.logical(args[6]) else TRUE
+n_adapt      <- if (length(args) >= 7) as.integer(args[7]) else 1000
 
 cat(sprintf("[R-Model] Reading input data from: %s\n", input_path))
 raw <- read.csv(input_path)
@@ -52,7 +53,9 @@ if (any(bad)) {
 cat(sprintf("[R-Model] N=%d units, %d province(s). Fitting Quasi-Binomial-Logistic ('qbl') model...\n",
             nrow(data), nlevels(data$prov)))
 
-mcmc_params <- list(burn.in = burn_in, n.adapt = 1000, n.iter = n_iter, n.chains = n_chains)
+mcmc_params <- list(burn.in = burn_in, n.adapt = n_adapt, n.iter = n_iter, n.chains = n_chains)
+cat(sprintf("[R-Model] MCMC settings: n.iter=%d, n.chains=%d, burn.in=%d, n.adapt=%d, parComp=%s\n",
+            n_iter, n_chains, burn_in, n_adapt, use_parcomp))
 
 # Different released forks of the eforensics package spell the
 # eligible-voters argument to eforensics() differently ("eligible.voters" vs.
@@ -222,7 +225,12 @@ out_summary <- data.frame(
   n_regions_no_fraud = n_no_fraud,
   n_regions_incremental = n_incremental,
   n_regions_extreme = n_extreme,
-  elapsed_seconds = elapsed
+  elapsed_seconds = elapsed,
+  n_iter = n_iter,
+  n_chains = n_chains,
+  burn_in = burn_in,
+  n_adapt = n_adapt,
+  use_parcomp = use_parcomp
 )
 write.csv(out_summary, output_path, row.names = FALSE)
 

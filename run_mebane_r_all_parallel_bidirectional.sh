@@ -40,6 +40,7 @@
 #   LEADER_SIDES="dem con" ./run_mebane_r_all_parallel_bidirectional.sh
 #                                                                     <- full bidirectional grid (2x the cells)
 #   MAX_PARALLEL=8 ./run_mebane_r_all_parallel_bidirectional.sh      <- override concurrency
+#   R_N_ADAPT=500 ./run_mebane_r_all_parallel_bidirectional.sh        <- override JAGS adaptation iterations (default 1000)
 #   FORCE_RERUN=1 ./run_mebane_r_all_parallel_bidirectional.sh "21" <- ignore existing logs, rerun anyway
 #
 # Province grouping: 'original' (~17-18 provinces, DEFAULT) or 'megaregion' (4 groups),
@@ -49,17 +50,18 @@ set -e
 
 ELECTIONS="${1:-21 22 pres20 pres21 18 19 20 pres16 pres17 pres18 pres19}"
 LEVELS="${2:-dong constituency}"
-NO_EARLY="18 19 pres16 pres17 pres18"
+NO_EARLY="18 19 pres16 pres17 pres18 20"
 DONG_CHANNELS="early sameday pooled"
 CONST_CHANNELS="early early_out early_total sameday total"
 SOURCES="real marginal_null joint_null"
-LEADER_SIDES="${LEADER_SIDES:-dem con}"   # space-separated subset of: dem con
+LEADER_SIDES="${LEADER_SIDES:-dem}"   # space-separated subset of: dem con
 
 # R/JAGS fit settings
-R_N_ITER="${R_N_ITER:-3000}"
+R_N_ITER="${R_N_ITER:-5000}"
 R_N_CHAINS="${R_N_CHAINS:-4}"
 R_BURN_IN="${R_BURN_IN:-1000}"
 USE_PARCOMP="${USE_PARCOMP:-0}"   # see concurrency note above -- default OFF
+R_N_ADAPT="${R_N_ADAPT:-1000}"   # JAGS adaptation iterations; 1000 matches mebane_crosscheck.R's own default
 
 # Set to 1 to relaunch cells even if a non-empty log already exists for them.
 FORCE_RERUN="${FORCE_RERUN:-0}"
@@ -104,7 +106,7 @@ for ls in $LEADER_SIDES; do
 done
 
 echo "Bidirectional resumable R/JAGS sweep: LEADER_SIDES='$LEADER_SIDES', MAX_PARALLEL=$MAX_PARALLEL, "
-echo "USE_PARCOMP=$USE_PARCOMP, R_N_ITER=$R_N_ITER, R_N_CHAINS=$R_N_CHAINS, R_BURN_IN=$R_BURN_IN, "
+echo "USE_PARCOMP=$USE_PARCOMP, R_N_ITER=$R_N_ITER, R_N_CHAINS=$R_N_CHAINS, R_BURN_IN=$R_BURN_IN, R_N_ADAPT=$R_N_ADAPT, "
 echo "FORCE_RERUN=$FORCE_RERUN"
 echo ""
 
@@ -125,7 +127,7 @@ run_one_cell() {
   local snippet_path="${log_dir}/.summary_snippets/${cell}.snippet"
 
   if python3 "$PIPELINE_SCRIPT" "$e" "$level" "$ch" "$src" "$leader_side" \
-        "$R_N_ITER" "$R_N_CHAINS" "$R_BURN_IN" "$USE_PARCOMP" \
+        "$R_N_ITER" "$R_N_CHAINS" "$R_BURN_IN" "$USE_PARCOMP" "$R_N_ADAPT" \
         > "$log_path" 2>&1; then
     echo "OK    -> $cell" >> "$status_path"
   else
