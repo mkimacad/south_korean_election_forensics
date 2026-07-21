@@ -1,12 +1,16 @@
 header:WARNING - This project is undergoing significant chagnes
-I am now adding Mebane's eforensics model analysis - see the repo's eforensics_code_and_data.zip file as well as the new eforensics manuscript draft.
+I am now adding Mebane's eforensics model analysis - see the repo's self-contained eforensics_code_and_data.zip file (this is all you need - election result CSV files are all included) as well as the new eforensics manuscript draft.
 Mebane's model has too many false-positives and even flag elections that had no election fraud claimed. The model also claims fraud-free synthetic data are fraudalent, when they are not.
 
 The eforensics manuscript is displayed below, above the original forensic manuscript.
 
-Move election result csv data in repo's data/election_result_data to the same directory of run_mebane_r_all_parallel_bidirectional.sh, mebane_crosscheck.R and mebane_r_pipeline_bidirectional.py and run run_mebane_r_all_parallel_bidirectional.sh bash code. I will give further description on package dependency soon - the obvious one is that it needs official eforensics R package from github.
+Unzip the zip file and run run_mebane_r_all_parallel_bidirectional.sh bash code. I will give further description on package dependency soon - the obvious one is that it needs official eforensics R package from github.
 
 There really isn't much coding - code is really election data processing to invoke official Walter Mebane's eforensics package. So anyone already knowledgable with R environment can easily try the same thing with election CSV results even without my codes here.
+
+header:To do (updates)
+1. Now I have the full 5000 n_iter results - there's minimal quantitative difference from 600 n_iter cases. But I am going to upload these as well.
+2. The original election forensic manuscript (non-Mebane forensic analysis) now requires IV drop - I think IV just makes things controversial, and there is no real need for IV anyway, apart from the author's desires to estimate strong third-party influences. The updated (non-IV) manuscript is already there on SSRN, and I will update it here as well.
 
 header: (Currently being replaced, not yet updated, to be updated:) Demography, Early Voting, and Election Integrity in South Korea
 This repository contains the replication code, data, and supplementary materials for the manuscript "Demography, Early Voting, and Election Integrity in South Korea: Evidence Across Four Electoral Cycles" by Minseong Kim. 
