@@ -1,60 +1,12 @@
-header:WARNING - This project is undergoing significant chagnes
-I am now adding Mebane's eforensics model analysis - see the repo's self-contained eforensics_code_and_data.zip file (this is all you need - election result CSV files are all included) as well as the new eforensics manuscript draft.
-Mebane's model has too many false-positives and even flag elections that had no election fraud claimed. The model also claims fraud-free synthetic data are fraudalent, when they are not.
+header:
+If you are looking for the code/data/manuscript on the Walter Mebane's eforensics model applied to Korean election results, go to:
 
-The eforensics manuscript is displayed below, above the original forensic manuscript.
+https://mkimacad.github.io/south_korean_election_forensics/mebane
 
-Unzip the zip file and run run_mebane_r_all_parallel_bidirectional.sh bash code. I will give further description on package dependency soon - the obvious one is that it needs official eforensics R package from github.
+If you are looking for the code/data/manuscript on the non-eforensics regression/forensic analysis on Korean election results, go to:
 
-There really isn't much coding - code is really election data processing to invoke official Walter Mebane's eforensics package. So anyone already knowledgable with R environment can easily try the same thing with election CSV results even without my codes here.
+https://mkimacad.github.io/south_korean_election_forensics/traditional
 
-header:To do (updates)
-1. Now I have the full 5000 n_iter results - there's minimal quantitative difference from 600 n_iter cases. But I am going to upload these as well.
-2. The original election forensic manuscript (non-Mebane forensic analysis) now requires IV drop - I think IV just makes things controversial, and there is no real need for IV anyway, apart from the author's desires to estimate strong third-party influences. The updated (non-IV) manuscript is already there on SSRN, and I will update it here as well.
+If you are looking for the code/data/manuscript on the young voter behavior in Korean elections, go to (NOT YET THERE - to be updated):
 
-header: (Currently being replaced, not yet updated, to be updated:) Demography, Early Voting, and Election Integrity in South Korea
-This repository contains the replication code, data, and supplementary materials for the manuscript "Demography, Early Voting, and Election Integrity in South Korea: Evidence Across Four Electoral Cycles" by Minseong Kim. 
-
-header: (Deprecated: to be updated) Overview
-Following the introduction of nationwide early voting in South Korea in 2013, early ballots have consistently returned higher Democratic Party vote shares than same-day ballots. This divergence has sparked persistent allegations of systematic electoral fraud. This project assesses these claims using a unified empirical framework applied to four major elections spanning 2020 to 2025: the 21st and 22nd General Elections (2020, 2024) and the 20th and 21st Presidential Elections (2022, 2025).
-
-header: (Deprecated: to be updated) Methodology
-The research investigates the generative process behind early and same-day ballots using two complementary analytical strategies:
-- Forensic Statistical Tests: Application of simulation-adjusted second-digit Benford's law, last-digit uniformity tests, mixture-model fingerprinting, and scrutiny of the widely circulated "63:37" early-vote ratio claim.
-- Sociodemographic Regression Analysis: Population-weighted least squares regression at the sub-district (dong) level. This models vote shares using principal components derived from 51 census, employment, and housing variables. For the three-candidate 2025 presidential election, an instrumental-variable (IV-2SLS) approach uses the 2017 vote share of Yoo Seung-min to isolate the causal effect of third-party vote diversion.
-
-header: (Deprecated: to be updated) Key Findings
-- No Systemic Fraud: Forensic tests reveal no systematic pattern of large-scale ballot manipulation across the 11,436 dong-election observations in the four analyzed cycles.
-- Demographics Explain the Gap: Sub-district sociodemographic characteristics explain 73% to 94% of the geographic variation in vote shares. The predictors perform equally well for both early votes and same-day votes, indicating that the early-voting divergence is driven by demographic sorting (who votes early) rather than counting manipulation.
-- The "63:37" Claim is Unsupported: Early-voting two-party ratios vary substantially across different elections. While the ratio was approximately 63% in metropolitan areas in 2020, it dropped to 53%–59% in 2022, and rose to 72%–73.7% in 2025. Furthermore, the micro-level standard deviation across precincts is large (between 6.4 and 9.1 percentage points), refuting the existence of a fixed mathematical algorithm. 
-- 2022 Anomaly: A candidate-specific last-digit anomaly was flagged in the 2022 presidential election. While it warrants further scrutiny, the magnitude of the deviation is small (Cramer's V = 0.028) and does not invalidate the broader demographic findings.
-
-header: (Deprecated: to be updated) Repository Contents
-In accordance with the manuscript's data availability statement, this repository provides the full forensic and regression results, alongside the necessary scripts and aggregated data to reproduce the findings.
-
-header: (Deprecated: to be updated) Code information (jupyterlab notebook files)
-The main forensic file (run concurrently with the regression file): korean_election_forensics.ipynb
-
-The main regression file (run concurrently with the main forensic file): korean_election_regressions.ipynb
-
-The supplementary python file that processes polling station counts: processing_codes/polling_station_fetch.py
-
-header: (Deprecated: to be updated) Required data files
-./ as the working directory where the python or jupyter notebook files are at:
-
-After downloading ipynb files at ./, unzip data/regression_load.zip into ./ - that's all we need. OR:
-
-place repo's data/processed_apt_price_data files into ./output_data directory in jupyterlab or python environment
-
-place files in repo's data/census_data, data/election_result_data, data/employment_data, data/polling_station_count_data into ./ in Jupyterlab or python environment.
-
-header: Data sources
-The census data (csv files) are from https://www.data.go.kr/data/3033304/fileData.do (official Korean government census data), which directs to https://jumin.mois.go.kr/ageStatMonth.do .
-
-The general elction results (csv files) are from official Korean government data, https://www.data.go.kr/data/15025527/fileData.do (The presidental election results are from https://www.data.go.kr/data/15025528/fileData.do)
-
-The actual monthly housing price data are from official Korean government data, https://www.data.go.kr/data/3050988/fileData.do, which directs to https://rt.molit.go.kr/pt/xls/xls.do?mobileAt=
-
-Additional data: 시군구별 경제활동인구조사 지역별고용조사 (employment data) + GRDP data from KOSIS
-
-Polling station information data from http://data.go.kr/data/15000836/openapi.do
+https://mkimacad.github.io/south_korean_election_forensics/young_voter
