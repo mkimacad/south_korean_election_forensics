@@ -1,0 +1,17 @@
+header:Code/Data
+The below file browser allows you to download self-contained eforensics_code_and_data.zip file, containing election result CSV data.
+
+The main code to run is run_mebane_r_all_parallel_bidirection.sh in the zip file.
+
+There isn't much actual coding - it only processes data to be loaded by the Walter Mebane's official eforensics R package.
+
+header:Code dependencies
+Download DEPENDENCIES.MD from the below file browser.
+
+header:Overview  
+Mebane's eforensics model has too many false-positives and even flag elections that had no election fraud claimed. The model also claims fraud-free synthetic data are fraudalent, when they are not.
+
+header: Data sources
+The general elction results (csv files) are from official Korean government data, https://www.data.go.kr/data/15025527/fileData.do
+
+The presidental election results are from https://www.data.go.kr/data/15025528/fileData.do
