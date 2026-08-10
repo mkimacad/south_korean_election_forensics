@@ -1,19 +1,18 @@
 header:Code/Data
 The below file browser allows you to download self-contained eforensics_code_and_data.zip file, containing election result CSV data.
 
-The main code to run is run_mebane_r_all_parallel_bidirectional.sh in the zip file.
+The main code to run is run_mebane_r_all_parallel_bidirectional.sh in the zip file, though there are many, many dependencies (to be manually resolved) that need to be tackled SO:
 
-Alternatively, if conda is available (linux environment assumed):
+Alternatively, if conda is available (linux environment assumed) - everything becomes straightforward and self-contained:
 
 /bin/bash setup_env.sh # installs all packages in conda eforensics environment
 conda activate eforensics
 /bin/bash run_mebane_r_all_parallel_bidirectional.sh
 /bin/bash run_mebane_self_null_parallel.sh
 
-There isn't much actual coding - it only processes data to be loaded by the Walter Mebane's official eforensics R package.
+See also README.MD in the zip file for additional information.
 
-header:Code dependencies
-Download DEPENDENCIES.MD from the below file browser.
+There isn't much actual coding - it only processes data to be loaded by the Walter Mebane's official eforensics R package.
 
 header:Overview  
 Mebane's eforensics model has too many false-positives and even flag elections that had no election fraud claimed. The model also claims fraud-free synthetic data are fraudalent, when they are not.
