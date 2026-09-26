@@ -3,6 +3,10 @@ If you are looking for the code/data/manuscript on the Walter Mebane's eforensic
 
 https://mkimacad.github.io/south_korean_election_forensics/mebane
 
+Code-and-data zip file permalink:
+
+https://github.com/mkimacad/south_korean_election_forensics/blob/d42306f64046de922259891ccca558b6bc5170c4/mebane/eforensics_code_and_data.zip
+
 If you are looking for the code/data/manuscript on the non-eforensics regression/forensic analysis on Korean election results, go to:
 
 https://mkimacad.github.io/south_korean_election_forensics/traditional
