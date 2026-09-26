@@ -3,6 +3,10 @@ The below file browser allows you to download self-contained eforensics_code_and
 
 See also README.MD in the zip file (which is the same as this mebane repo's README.MD) for additional information.
 
+Code-and-data zip file permalink:
+
+https://github.com/mkimacad/south_korean_election_forensics/blob/d42306f64046de922259891ccca558b6bc5170c4/mebane/eforensics_code_and_data.zip
+
 header:Overview  
 Mebane's eforensics model has too many false-positives and even flag elections that had no election fraud claimed. The model also claims fraud-free synthetic data are fraudalent, when they are not. The same issues are seen in the Klimek (et al.) fingerprint model.
 
